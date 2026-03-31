@@ -39,6 +39,23 @@ function createWindow() {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
   }
 
+  // Strip frame-ancestors / X-Frame-Options from OpenClaw responses
+  // so the Control UI can load inside our iframe
+  mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+    const headers = details.responseHeaders || {};
+    // Remove headers that block iframe embedding
+    delete headers['x-frame-options'];
+    delete headers['X-Frame-Options'];
+    // Rewrite CSP frame-ancestors if present
+    const cspKeys = Object.keys(headers).filter(k => k.toLowerCase() === 'content-security-policy');
+    for (const key of cspKeys) {
+      if (headers[key]) {
+        headers[key] = headers[key].map(v => v.replace(/frame-ancestors\s+[^;]+;?/gi, ''));
+      }
+    }
+    callback({ responseHeaders: headers });
+  });
+
   mainWindow.on('blur', () => {
     if (!isPinned && mainWindow?.isVisible()) {
       // Optionally hide on blur — controlled by settings
