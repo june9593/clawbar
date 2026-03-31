@@ -20,6 +20,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   resolvedTheme: 'light',
 
   loadSettings: async () => {
+    if (!window.electronAPI?.settings) {
+      set({ ...defaults, resolvedTheme: 'light' });
+      return;
+    }
     try {
       const settings = await window.electronAPI.settings.get();
       const merged = { ...defaults, ...settings };
@@ -45,7 +49,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
   updateSetting: async (key: string, value: unknown) => {
     try {
-      await window.electronAPI.settings.set(key, value);
+      if (window.electronAPI?.settings) {
+        await window.electronAPI.settings.set(key, value);
+      }
       set((s) => {
         const next = { ...s, [key]: value };
         // Recalculate resolved theme

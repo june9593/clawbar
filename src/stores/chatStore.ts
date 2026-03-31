@@ -38,6 +38,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
   pollingTimer: null,
 
   checkConnection: async () => {
+    if (!window.electronAPI?.openclaw) {
+      set({ connectionStatus: 'disconnected' });
+      return;
+    }
     set({ connectionStatus: 'connecting' });
     try {
       const result = await window.electronAPI.openclaw.checkConnection();
@@ -52,6 +56,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   loadAgents: async () => {
+    if (!window.electronAPI?.openclaw) return;
     try {
       const result = await window.electronAPI.openclaw.getAgents();
       if (result.success && result.agents) {
@@ -64,6 +69,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   loadSessions: async () => {
+    if (!window.electronAPI?.openclaw) return;
     try {
       const result = await window.electronAPI.openclaw.getSessions();
       if (result.success && result.sessions) {
@@ -79,7 +85,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   loadTranscript: async () => {
     const { currentSession } = get();
-    if (!currentSession) return;
+    if (!currentSession || !window.electronAPI?.openclaw) return;
     try {
       const result = await window.electronAPI.openclaw.getTranscript(
         currentSession.agent,
@@ -93,7 +99,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   sendMessage: async (text: string) => {
     const { currentSession, currentAgent } = get();
-    if (!currentSession || !text.trim()) return;
+    if (!currentSession || !text.trim() || !window.electronAPI?.openclaw) return;
 
     const userMessage: Message = {
       id: `user-${Date.now()}`,
