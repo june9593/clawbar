@@ -3,79 +3,75 @@
 @tailwind utilities;
 
 :root {
-  /* Light theme (default) */
-  --color-bg-primary: #FFFFFF;
-  --color-bg-secondary: #F5F5F7;
-  --color-bg-tertiary: #E8E8ED;
-  --color-bg-chat: #F9FAFB;
-  --color-bg-input: #FFFFFF;
+  /* Apple Design System — Light */
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #f5f5f7;
+  --color-bg-tertiary: #e8e8ed;
+  --color-bg-chat: #f5f5f7;
+  --color-bg-input: #ffffff;
 
-  --color-surface-user-bubble: #007AFF;
-  --color-surface-assistant-bubble: #F0F0F5;
   --color-surface-hover: rgba(0, 0, 0, 0.04);
   --color-surface-active: rgba(0, 0, 0, 0.08);
-  --color-surface-code-block: #F5F5F7;
-  --color-surface-title-bar: rgba(255, 255, 255, 0.85);
+  --color-surface-title-bar: rgba(255, 255, 255, 0.72);
+  --color-surface-card: #f5f5f7;
 
-  --color-text-primary: #1D1D1F;
-  --color-text-secondary: #6E6E73;
-  --color-text-tertiary: #AEAEB2;
-  --color-text-on-user-bubble: #FFFFFF;
-  --color-text-on-assistant-bubble: #1D1D1F;
-  --color-text-link: #007AFF;
-  --color-text-code: #E83E8C;
+  --color-text-primary: #1d1d1f;
+  --color-text-secondary: rgba(0, 0, 0, 0.56);
+  --color-text-tertiary: rgba(0, 0, 0, 0.36);
+  --color-text-link: #0071e3;
+  --color-text-link-hover: #0077ed;
 
-  --color-border-primary: rgba(0, 0, 0, 0.1);
-  --color-border-secondary: rgba(0, 0, 0, 0.06);
-  --color-border-focus: #007AFF;
+  --color-border-primary: rgba(0, 0, 0, 0.08);
+  --color-border-secondary: rgba(0, 0, 0, 0.04);
+  --color-border-focus: #0071e3;
 
-  --color-status-connected: #34C759;
-  --color-status-disconnected: #FF3B30;
-  --color-status-connecting: #FF9500;
+  --color-accent: #0071e3;
 
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
-  --radius-bubble: 18px;
+  --color-status-connected: #34c759;
+  --color-status-disconnected: #ff3b30;
+  --color-status-connecting: #ff9500;
 
-  --shadow-window: 0 20px 60px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(0, 0, 0, 0.1);
+  --shadow-window: 0 24px 80px rgba(0, 0, 0, 0.12), 0 0 0 0.5px rgba(0, 0, 0, 0.06);
+  --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.06);
 
   --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
   --font-mono: 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
 
-  --title-bar-height: 40px;
+  --title-bar-height: 44px;
+  --radius-window: 12px;
 }
 
 [data-theme="dark"] {
-  --color-bg-primary: #1C1C1E;
-  --color-bg-secondary: #2C2C2E;
-  --color-bg-tertiary: #3A3A3C;
-  --color-bg-chat: #1C1C1E;
-  --color-bg-input: #2C2C2E;
+  --color-bg-primary: #000000;
+  --color-bg-secondary: #1c1c1e;
+  --color-bg-tertiary: #2c2c2e;
+  --color-bg-chat: #000000;
+  --color-bg-input: #1c1c1e;
 
-  --color-surface-user-bubble: #0A84FF;
-  --color-surface-assistant-bubble: #2C2C2E;
   --color-surface-hover: rgba(255, 255, 255, 0.06);
   --color-surface-active: rgba(255, 255, 255, 0.1);
-  --color-surface-code-block: #2C2C2E;
-  --color-surface-title-bar: rgba(28, 28, 30, 0.85);
+  --color-surface-title-bar: rgba(22, 22, 24, 0.72);
+  --color-surface-card: #1c1c1e;
 
-  --color-text-primary: #F5F5F7;
-  --color-text-secondary: #98989D;
-  --color-text-tertiary: #636366;
-  --color-text-on-user-bubble: #FFFFFF;
-  --color-text-on-assistant-bubble: #F5F5F7;
-  --color-text-link: #0A84FF;
-  --color-text-code: #FF6B9D;
+  --color-text-primary: #f5f5f7;
+  --color-text-secondary: rgba(255, 255, 255, 0.56);
+  --color-text-tertiary: rgba(255, 255, 255, 0.36);
+  --color-text-link: #2997ff;
+  --color-text-link-hover: #40a9ff;
 
-  --color-border-primary: rgba(255, 255, 255, 0.1);
-  --color-border-secondary: rgba(255, 255, 255, 0.06);
-  --color-border-focus: #0A84FF;
+  --color-border-primary: rgba(255, 255, 255, 0.08);
+  --color-border-secondary: rgba(255, 255, 255, 0.04);
+  --color-border-focus: #2997ff;
 
-  --color-status-connected: #30D158;
-  --color-status-disconnected: #FF453A;
-  --color-status-connecting: #FF9F0A;
+  --color-accent: #2997ff;
+
+  --color-status-connected: #30d158;
+  --color-status-disconnected: #ff453a;
+  --color-status-connecting: #ff9f0a;
+
+  --shadow-window: 0 24px 80px rgba(0, 0, 0, 0.5), 0 0 0 0.5px rgba(255, 255, 255, 0.06);
+  --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.3);
 }
 
 * {
@@ -89,18 +85,18 @@ html, body, #root {
   overflow: hidden;
   font-family: var(--font-sans);
   font-size: 13px;
-  line-height: 1.5;
+  line-height: 1.47;
+  letter-spacing: -0.08px;
   color: var(--color-text-primary);
   background-color: var(--color-bg-primary);
   -webkit-font-smoothing: antialiased;
   user-select: none;
 }
 
-/* Window chrome — rounded corners + subtle border */
+/* Window chrome */
 #root {
-  border-radius: 12px;
+  border-radius: var(--radius-window);
   overflow: hidden;
-  border: 1px solid var(--color-border-primary);
 }
 
 /* Scrollbar styling */

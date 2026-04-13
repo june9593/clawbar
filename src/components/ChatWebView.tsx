@@ -26,39 +26,69 @@ export function ChatWebView() {
 
   if (loadError) {
     return (
-      <div
-        className="flex flex-col items-center justify-center h-full gap-4 px-8"
-        style={{ backgroundColor: 'var(--color-bg-chat)' }}
-      >
-        <div
-          className="w-16 h-16 rounded-2xl flex items-center justify-center"
-          style={{ backgroundColor: 'var(--color-bg-secondary)' }}
-        >
-          <span className="text-3xl">⚠️</span>
+      <div style={{
+        width: '100%', height: '100%',
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+        gap: '20px', padding: '40px 32px',
+        background: 'var(--color-bg-primary)',
+      }}>
+        <div style={{
+          width: '64px', height: '64px', borderRadius: '16px',
+          background: 'var(--color-surface-card)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: '28px',
+        }}>
+          ⚠️
         </div>
-        <div className="text-center space-y-1.5">
-          <p className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>
+        <div style={{ textAlign: 'center' }}>
+          <p style={{
+            fontFamily: 'var(--font-display)',
+            fontSize: '17px', fontWeight: 600,
+            color: 'var(--color-text-primary)',
+            letterSpacing: '-0.2px', marginBottom: '6px',
+          }}>
             无法连接到 OpenClaw
           </p>
-          <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-            请确认 Gateway 已启动并检查地址配置
+          <p style={{
+            fontSize: '14px', color: 'var(--color-text-secondary)',
+            letterSpacing: '-0.16px', lineHeight: 1.47,
+          }}>
+            请确认 Gateway 已启动
           </p>
-          <p className="text-xs font-mono" style={{ color: 'var(--color-text-tertiary)' }}>
+          <p style={{
+            fontSize: '12px', color: 'var(--color-text-tertiary)',
+            fontFamily: 'var(--font-mono)', marginTop: '4px',
+          }}>
             {gatewayUrl}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div style={{ display: 'flex', gap: '10px' }}>
           <button
             onClick={() => { setLoadError(false); setLoading(true); }}
-            className="px-4 py-1.5 rounded-lg text-xs font-medium"
-            style={{ color: 'var(--color-text-link)', border: '1px solid var(--color-border-primary)' }}
+            style={{
+              padding: '8px 20px', borderRadius: '980px',
+              border: '1px solid var(--color-accent)',
+              background: 'transparent',
+              color: 'var(--color-accent)',
+              fontSize: '14px', fontWeight: 400,
+              cursor: 'pointer', fontFamily: 'inherit',
+              letterSpacing: '-0.16px',
+            }}
           >
             重试
           </button>
           <button
             onClick={() => setView('settings')}
-            className="px-4 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
-            style={{ backgroundColor: 'var(--color-surface-user-bubble)', color: '#fff' }}
+            style={{
+              padding: '8px 20px', borderRadius: '8px',
+              border: 'none',
+              background: 'var(--color-accent)',
+              color: '#ffffff',
+              fontSize: '14px', fontWeight: 400,
+              cursor: 'pointer', fontFamily: 'inherit',
+              letterSpacing: '-0.16px',
+            }}
           >
             打开设置
           </button>
@@ -68,13 +98,13 @@ export function ChatWebView() {
   }
 
   return (
-    <div className="flex-1 h-full relative" style={{ backgroundColor: 'var(--color-bg-primary)' }}>
+    <div className="flex-1 h-full relative" style={{ backgroundColor: 'var(--color-bg-chat)' }}>
       {loading && (
         <div className="absolute inset-0 flex items-center justify-center"
-          style={{ backgroundColor: 'var(--color-bg-chat)' }}>
-          <div className="text-center space-y-2">
-            <span className="text-2xl">🦞</span>
-            <p className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>连接中...</p>
+          style={{ background: 'var(--color-bg-primary)' }}>
+          <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '28px' }}>🦞</span>
+            <p style={{ fontSize: '12px', color: 'var(--color-text-tertiary)', letterSpacing: '-0.08px' }}>连接中...</p>
           </div>
         </div>
       )}
@@ -82,7 +112,10 @@ export function ChatWebView() {
         key={chatUrl}
         src={chatUrl}
         className="w-full h-full border-0"
-        style={{ borderRadius: '0 0 12px 12px' }}
+        style={{
+          borderRadius: '0 0 var(--radius-window) var(--radius-window)',
+          background: 'var(--color-bg-primary)',
+        }}
         allow="clipboard-write"
         sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
         onLoad={() => setLoading(false)}
@@ -94,46 +127,35 @@ export function ChatWebView() {
 
 function WelcomeState({ onOpenSettings }: { onOpenSettings: () => void }) {
   return (
-    <div
-      style={{
-        width: '100%',
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '20px',
-        padding: '40px 32px',
-        background: 'var(--color-bg-primary)',
-      }}
-    >
+    <div style={{
+      width: '100%', height: '100%',
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
+      gap: '24px', padding: '40px 32px',
+      background: 'var(--color-bg-primary)',
+    }}>
       <div style={{
-        width: '72px',
-        height: '72px',
-        borderRadius: '20px',
-        background: 'var(--color-bg-secondary)',
-        border: '1px solid var(--color-border-secondary)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
+        width: '72px', height: '72px', borderRadius: '18px',
+        background: 'var(--color-surface-card)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
         fontSize: '36px',
       }}>
         🦞
       </div>
       <div style={{ textAlign: 'center' }}>
         <p style={{
-          fontSize: '18px',
-          fontWeight: 600,
+          fontFamily: 'var(--font-display)',
+          fontSize: '21px', fontWeight: 600,
           color: 'var(--color-text-primary)',
-          letterSpacing: '-0.02em',
+          letterSpacing: '-0.28px', lineHeight: 1.19,
           marginBottom: '8px',
         }}>
           欢迎使用 ClawBar
         </p>
         <p style={{
-          fontSize: '13px',
+          fontSize: '14px',
           color: 'var(--color-text-secondary)',
-          lineHeight: 1.6,
+          lineHeight: 1.47, letterSpacing: '-0.16px',
           maxWidth: '260px',
         }}>
           请在设置中配置 Gateway 地址以连接到 OpenClaw 实例
@@ -142,18 +164,16 @@ function WelcomeState({ onOpenSettings }: { onOpenSettings: () => void }) {
       <button
         onClick={onOpenSettings}
         style={{
-          marginTop: '4px',
-          padding: '9px 24px',
-          borderRadius: '8px',
+          padding: '9px 28px', borderRadius: '8px',
           border: 'none',
-          background: 'var(--color-text-link)',
-          color: '#FFFFFF',
-          fontSize: '14px',
-          fontWeight: 500,
-          cursor: 'pointer',
-          fontFamily: 'inherit',
+          background: 'var(--color-accent)',
+          color: '#ffffff',
+          fontSize: '15px', fontWeight: 400,
+          cursor: 'pointer', fontFamily: 'inherit',
+          letterSpacing: '-0.16px',
+          transition: 'filter 0.12s',
         }}
-        onMouseEnter={(e) => (e.currentTarget.style.filter = 'brightness(1.1)')}
+        onMouseEnter={(e) => (e.currentTarget.style.filter = 'brightness(1.08)')}
         onMouseLeave={(e) => (e.currentTarget.style.filter = 'none')}
       >
         打开设置
