@@ -1,6 +1,6 @@
 {
   "project": "clawbar",
-  "sprint": 4,
+  "sprint": 5,
   "updated": "2026-04-14",
   "features": [
     {
@@ -62,14 +62,14 @@
     {
       "id": "F-09",
       "name": "Window position persistence",
-      "status": "todo",
+      "status": "done",
       "owner": "dev-agent",
       "notes": "Remember drag position, restore on next show. Reset if off-screen."
     },
     {
       "id": "F-10",
       "name": "ESC key hides window (non-pin)",
-      "status": "todo",
+      "status": "done",
       "owner": "dev-agent",
       "notes": "globalShortcut or webContents key listener"
     },
@@ -97,7 +97,7 @@
     {
       "id": "F-14",
       "name": "Remove unused dependencies (react-markdown, remark-gfm)",
-      "status": "todo",
+      "status": "done",
       "owner": "dev-agent",
       "notes": "No longer needed after WebView refactor"
     }
