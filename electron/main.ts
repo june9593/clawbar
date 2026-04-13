@@ -56,6 +56,15 @@ function createWindow() {
     callback({ responseHeaders: headers });
   });
 
+  mainWindow.webContents.on('before-input-event', (_event, input) => {
+    if (input.key === 'Escape' && !isPinned && mainWindow?.isVisible()) {
+      mainWindow.hide();
+    }
+    if (input.key === 'w' && input.meta && !isPinned && mainWindow?.isVisible()) {
+      mainWindow.hide();
+    }
+  });
+
   mainWindow.on('blur', () => {
     if (!isPinned && mainWindow?.isVisible()) {
       // Optionally hide on blur — controlled by settings
