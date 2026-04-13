@@ -82,14 +82,17 @@ export function ChatWebView() {
           <button
             onClick={() => { setLoadError(false); setLoading(true); }}
             style={{
-              padding: '8px 20px', borderRadius: '980px',
+              padding: '8px 20px', borderRadius: '8px',
               border: '1px solid var(--color-accent)',
               background: 'transparent',
               color: 'var(--color-accent)',
               fontSize: '14px', fontWeight: 400,
               cursor: 'pointer', fontFamily: 'inherit',
               letterSpacing: '-0.16px',
+              transition: 'filter 0.12s',
             }}
+            onMouseEnter={(e) => (e.currentTarget.style.filter = 'brightness(1.15)')}
+            onMouseLeave={(e) => (e.currentTarget.style.filter = 'none')}
           >
             重试
           </button>
