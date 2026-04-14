@@ -20,8 +20,8 @@
 - Implements features, fixes bugs, maintains type safety
 
 ### Tester Agent (`.claude/agents/tester-agent.md`)
-- Owns: `scripts/test-*.py`, `docs/TEST-PLAN.md`
-- Writes Playwright tests, takes screenshots, produces QA reports
+- Owns: `docs/TEST-PLAN.md`
+- Runs MCP-based interactive verification, takes screenshots, produces QA reports
 
 ## Handoff Protocol
 

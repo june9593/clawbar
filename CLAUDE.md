@@ -42,6 +42,6 @@ See `AGENTS.md` for roles. Agent definitions in `.claude/agents/`.
 | pm-agent | `docs/PRD.md` |
 | designer-agent | `docs/DESIGN.md`, `docs/design-tokens.json` |
 | dev-agent | `electron/`, `src/`, `types/`, config files |
-| tester-agent | `tests/`, `scripts/test-*.py` |
+| tester-agent | `docs/TEST-PLAN.md` |
 | Orchestrator | `AGENTS.md`, `progress.json`, `CLAUDE.md` |
 | Nobody modifies | `docs/ARCHITECTURE.md` (orchestrator only) |
