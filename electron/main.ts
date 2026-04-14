@@ -68,57 +68,85 @@ function createWindow() {
   }
 
   // Strip frame-ancestors / X-Frame-Options from OpenClaw responses
-  // so the Control UI can load inside our iframe
+  // AND inject compact mode script into OpenClaw HTML responses
   mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
     const headers = details.responseHeaders || {};
-    // Remove headers that block iframe embedding
     delete headers['x-frame-options'];
     delete headers['X-Frame-Options'];
-    // Rewrite CSP frame-ancestors if present
     const cspKeys = Object.keys(headers).filter(k => k.toLowerCase() === 'content-security-policy');
     for (const key of cspKeys) {
       if (headers[key]) {
-        headers[key] = headers[key].map(v => v.replace(/frame-ancestors\s+[^;]+;?/gi, ''));
+        headers[key] = headers[key].map(v =>
+          v.replace(/frame-ancestors\s+[^;]+;?/gi, '')
+           .replace(/script-src\s+/gi, "script-src 'unsafe-inline' ")
+        );
       }
     }
     callback({ responseHeaders: headers });
   });
 
-  // After iframe loads an OpenClaw page, inject compact CSS via sub-frame access
-  mainWindow.webContents.on('did-frame-finish-load', (_event, isMainFrame) => {
-    if (isMainFrame) return; // Skip our own app frame
-    // Iterate sub-frames and inject compact CSS + focus mode
-    try {
-      for (const frame of mainWindow!.webContents.mainFrame.frames) {
-        frame.executeJavaScript(`
-          (function() {
-            if (document.getElementById('clawbar-compact')) return;
-            // Enable focus mode in OpenClaw settings
-            try {
-              const raw = localStorage.getItem('openclaw.control.settings.v1');
-              const s = raw ? JSON.parse(raw) : {};
-              if (!s.chatFocusMode) {
-                s.chatFocusMode = true;
-                s.navCollapsed = true;
-                localStorage.setItem('openclaw.control.settings.v1', JSON.stringify(s));
-                location.reload();
-                return;
-              }
-            } catch {}
-            // Inject compact CSS to hide sidebar and header
-            const style = document.createElement('style');
-            style.id = 'clawbar-compact';
-            style.textContent = \`
-              /* ClawBar compact mode — hide sidebar + header for menu bar */
-              [role="complementary"] { display: none !important; }
-              [role="banner"] { display: none !important; }
-              main { margin-left: 0 !important; }
-            \`;
-            document.head.appendChild(style);
-          })();
-        `).catch(() => {});
+  // Intercept OpenClaw HTML responses to inject compact-mode script
+  const { protocol } = require('electron');
+  mainWindow.webContents.session.protocol.interceptBufferProtocol('http', (request, callback) => {
+    const { net } = require('electron');
+    const req = net.request(request.url);
+    if (request.headers) {
+      for (const [key, value] of Object.entries(request.headers)) {
+        try { req.setHeader(key, value as string); } catch { /* skip */ }
       }
-    } catch { /* ignore */ }
+    }
+
+    req.on('response', (response: Electron.IncomingMessage) => {
+      const chunks: Buffer[] = [];
+      response.on('data', (chunk: Buffer) => chunks.push(chunk));
+      response.on('end', () => {
+        let body = Buffer.concat(chunks);
+        const contentType = response.headers['content-type']?.toString() || '';
+
+        // Only inject into HTML responses from OpenClaw
+        if (contentType.includes('text/html') && request.url.includes(':18789')) {
+          let html = body.toString('utf-8');
+          const injectScript = `
+<script>
+// ClawBar compact mode: auto-enable focus mode for menu bar popover
+(function(){
+  try {
+    var raw = localStorage.getItem('openclaw.control.settings.v1');
+    var s = raw ? JSON.parse(raw) : {};
+    if (!s.chatFocusMode) {
+      s.chatFocusMode = true;
+      s.navCollapsed = true;
+      localStorage.setItem('openclaw.control.settings.v1', JSON.stringify(s));
+    }
+  } catch(e) {}
+  // Inject CSS to hide topbar and nav in case focus mode doesn't fully hide them
+  var style = document.createElement('style');
+  style.textContent = '.topbar { display: none !important; } .sidebar, nav.nav-items { display: none !important; } main { margin-left: 0 !important; }';
+  document.addEventListener('DOMContentLoaded', function() { document.head.appendChild(style); });
+})();
+</script>`;
+          html = html.replace('</head>', injectScript + '</head>');
+          body = Buffer.from(html, 'utf-8');
+        }
+
+        callback({
+          statusCode: response.statusCode,
+          headers: response.headers as Record<string, string[]>,
+          data: body,
+        });
+      });
+    });
+
+    req.on('error', () => {
+      callback({ statusCode: 502, data: Buffer.from('Gateway error') });
+    });
+
+    if (request.uploadData) {
+      for (const upload of request.uploadData) {
+        if (upload.bytes) req.write(upload.bytes);
+      }
+    }
+    req.end();
   });
 
   mainWindow.webContents.on('before-input-event', (_event, input) => {
