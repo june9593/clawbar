@@ -84,6 +84,43 @@ function createWindow() {
     callback({ responseHeaders: headers });
   });
 
+  // After iframe loads an OpenClaw page, inject compact CSS via sub-frame access
+  mainWindow.webContents.on('did-frame-finish-load', (_event, isMainFrame) => {
+    if (isMainFrame) return; // Skip our own app frame
+    // Iterate sub-frames and inject compact CSS + focus mode
+    try {
+      for (const frame of mainWindow!.webContents.mainFrame.frames) {
+        frame.executeJavaScript(`
+          (function() {
+            if (document.getElementById('clawbar-compact')) return;
+            // Enable focus mode in OpenClaw settings
+            try {
+              const raw = localStorage.getItem('openclaw.control.settings.v1');
+              const s = raw ? JSON.parse(raw) : {};
+              if (!s.chatFocusMode) {
+                s.chatFocusMode = true;
+                s.navCollapsed = true;
+                localStorage.setItem('openclaw.control.settings.v1', JSON.stringify(s));
+                location.reload();
+                return;
+              }
+            } catch {}
+            // Inject compact CSS to hide sidebar and header
+            const style = document.createElement('style');
+            style.id = 'clawbar-compact';
+            style.textContent = \`
+              /* ClawBar compact mode — hide sidebar + header for menu bar */
+              [role="complementary"] { display: none !important; }
+              [role="banner"] { display: none !important; }
+              main { margin-left: 0 !important; }
+            \`;
+            document.head.appendChild(style);
+          })();
+        `).catch(() => {});
+      }
+    } catch { /* ignore */ }
+  });
+
   mainWindow.webContents.on('before-input-event', (_event, input) => {
     if (input.key === 'Escape' && !isPinned && mainWindow?.isVisible()) {
       mainWindow.hide();
