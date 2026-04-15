@@ -60,12 +60,7 @@ function createWindow() {
     },
   });
 
-  // Load the app
-  if (process.env.VITE_DEV_SERVER_URL) {
-    mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
-  } else {
-    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
-  }
+  // --- Network interceptors (MUST be registered BEFORE loadURL) ---
 
   // Rewrite Origin header on WebSocket upgrade requests to the gateway
   // so OpenClaw's allowedOrigins check passes
@@ -96,6 +91,13 @@ function createWindow() {
     }
     callback({ responseHeaders: headers });
   });
+
+  // Load the app (after interceptors are ready)
+  if (process.env.VITE_DEV_SERVER_URL) {
+    mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
+  } else {
+    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+  }
 
   mainWindow.webContents.on('before-input-event', (_event, input) => {
     if (input.key === 'Escape' && !isPinned && mainWindow?.isVisible()) {
