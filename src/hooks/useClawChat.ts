@@ -28,7 +28,7 @@ interface DeviceIdentity {
 }
 
 const DEVICE_KEY = 'clawbar-device-identity';
-const CLIENT_ID = 'clawbar';
+const CLIENT_ID = 'openclaw-control-ui';
 const CLIENT_MODE = 'webchat';
 const ROLE = 'operator';
 const SCOPES = ['operator.admin', 'operator.approvals', 'operator.pairing'];
@@ -49,15 +49,40 @@ function fromHex(hex: string): Uint8Array {
   return bytes;
 }
 
+function fromBase64url(b64: string): Uint8Array {
+  const s = b64.replace(/-/g, '+').replace(/_/g, '/');
+  const pad = s.length % 4 === 0 ? '' : '='.repeat(4 - (s.length % 4));
+  const bin = atob(s + pad);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+
+async function sha256Hex(data: Uint8Array): Promise<string> {
+  const hash = await crypto.subtle.digest('SHA-256', data.slice().buffer);
+  return toHex(new Uint8Array(hash));
+}
+
 async function loadOrCreateIdentity(): Promise<DeviceIdentity> {
   const raw = localStorage.getItem(DEVICE_KEY);
   if (raw) {
-    try { return JSON.parse(raw) as DeviceIdentity; } catch { /* regenerate */ }
+    try {
+      const stored = JSON.parse(raw) as DeviceIdentity;
+      // Re-derive deviceId from publicKey to ensure correctness
+      const pubBytes = fromBase64url(stored.publicKeyB64);
+      const correctId = await sha256Hex(pubBytes);
+      if (stored.deviceId !== correctId) {
+        stored.deviceId = correctId;
+        localStorage.setItem(DEVICE_KEY, JSON.stringify(stored));
+      }
+      return stored;
+    } catch { /* regenerate */ }
   }
   // Generate Ed25519 keypair using @noble/ed25519
   const privateKeyBytes = ed.etc.randomBytes(32);
   const publicKeyBytes = await ed.getPublicKeyAsync(privateKeyBytes);
-  const deviceId = toHex(crypto.getRandomValues(new Uint8Array(16)));
+  // Device ID = SHA-256(publicKey) as hex (OpenClaw protocol requirement)
+  const deviceId = await sha256Hex(publicKeyBytes);
 
   const identity: DeviceIdentity = {
     deviceId,
@@ -152,7 +177,7 @@ export function useClawChat(gatewayUrl: string, authToken: string): UseClawChat 
             const r = makeReq('connect', {
               minProtocol: 3,
               maxProtocol: 3,
-              client: { id: CLIENT_ID, mode: CLIENT_MODE },
+              client: { id: CLIENT_ID, version: 'control-ui', platform: 'electron', mode: CLIENT_MODE },
               role: ROLE,
               scopes: SCOPES,
               device: {
@@ -162,7 +187,9 @@ export function useClawChat(gatewayUrl: string, authToken: string): UseClawChat 
                 signedAt,
                 nonce: p.nonce,
               },
+              caps: [],
               auth: { token: authToken },
+              locale: 'en',
             });
             connectIdRef.current = r.id;
             ws.send(r.raw);
@@ -178,8 +205,8 @@ export function useClawChat(gatewayUrl: string, authToken: string): UseClawChat 
               historyIdRef.current = h.id;
               ws.send(h.raw);
             } else {
-              const p = d.payload as Record<string, unknown> | undefined;
-              setError(`连接失败: ${p?.message || JSON.stringify(p)}`);
+              const err = d.error as Record<string, unknown> | undefined;
+              setError(`连接失败: ${err?.message || JSON.stringify(err)}`);
             }
             return;
           }
@@ -241,8 +268,8 @@ export function useClawChat(gatewayUrl: string, authToken: string): UseClawChat 
 
           /* 5. Generic error response */
           if (d.type === 'res' && d.ok === false) {
-            const p = d.payload as Record<string, unknown> | undefined;
-            setError(`Gateway: ${p?.message || JSON.stringify(p)}`);
+            const err = d.error as Record<string, unknown> | undefined;
+            setError(`Gateway: ${err?.message || JSON.stringify(err)}`);
           }
         } catch (e) {
           console.error('[ClawBar WS] handler error:', e);
