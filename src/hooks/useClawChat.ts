@@ -137,7 +137,6 @@ export function useClawChat(gatewayUrl: string, authToken: string): UseClawChat 
 
   const wsRef = useRef<WebSocket | null>(null);
   const retries = useRef(0);
-  const streamBuf = useRef('');
   const identityRef = useRef<DeviceIdentity | null>(null);
   const connectIdRef = useRef('');
   const historyIdRef = useRef('');
@@ -231,27 +230,26 @@ export function useClawChat(gatewayUrl: string, authToken: string): UseClawChat 
             return;
           }
 
-          /* 4. chat streaming events */
-          if (d.type === 'event' && typeof d.event === 'string' && d.event.startsWith('chat')) {
+          /* 4. chat streaming events — OpenClaw sends event="chat" with payload.state */
+          if (d.type === 'event' && d.event === 'chat') {
             const p = (d.payload || {}) as Record<string, unknown>;
-            const sub = (p.type || p.event || d.event) as string;
+            const state = p.state as string;
+            const msg = p.message as { role?: string; content?: unknown } | undefined;
 
-            if (/start/i.test(sub)) {
+            if (state === 'delta') {
               setIsTyping(true);
-              streamBuf.current = '';
-            } else if (/delta/i.test(sub)) {
-              streamBuf.current += (p.text ?? p.delta ?? '') as string;
-              const text = streamBuf.current;
-              setMessages(prev => {
-                const rest = prev.filter(m => m.id !== '__stream__');
-                return [...rest, {
-                  id: '__stream__', role: 'assistant' as const,
-                  content: text, timestamp: new Date().toISOString(),
-                }];
-              });
-            } else if (/end|done|complete/i.test(sub)) {
-              const final = streamBuf.current || textFrom(p.text ?? p.content ?? '');
-              streamBuf.current = '';
+              const text = textFrom(msg?.content);
+              if (text) {
+                setMessages(prev => {
+                  const rest = prev.filter(m => m.id !== '__stream__');
+                  return [...rest, {
+                    id: '__stream__', role: 'assistant' as const,
+                    content: text, timestamp: new Date().toISOString(),
+                  }];
+                });
+              }
+            } else if (state === 'final') {
+              const final = textFrom(msg?.content);
               setIsTyping(false);
               if (final) {
                 setMessages(prev => {
@@ -310,13 +308,16 @@ export function useClawChat(gatewayUrl: string, authToken: string): UseClawChat 
       content: text, timestamp: new Date().toISOString(),
     }]);
     setIsTyping(true);
-    ws.send(makeReq('chat.send', { text }).raw);
+    ws.send(makeReq('chat.send', {
+      sessionKey: 'main',
+      message: text,
+      idempotencyKey: crypto.randomUUID(),
+    }).raw);
   }, []);
 
   const clearMessages = useCallback(() => {
     setMessages([]);
     setIsTyping(false);
-    streamBuf.current = '';
   }, []);
 
   return { messages, isConnected, isTyping, sendMessage, clearMessages, error };
