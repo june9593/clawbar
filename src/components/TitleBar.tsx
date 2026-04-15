@@ -63,9 +63,9 @@ export function TitleBar() {
           active={pinned}
           title={pinned ? '取消置顶' : '置顶'}
         >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-            <path d="M9.828 3.172a.5.5 0 0 0-.707 0l-.586.586L6.95 2.172a.5.5 0 0 0-.707.707l.586.586-2.829 2.829a.5.5 0 0 0 0 .707l2 2a.5.5 0 0 0 .707 0L9.536 6.17l.586.586a.5.5 0 0 0 .707-.707L9.243 4.464l.585-.585a.5.5 0 0 0 0-.707zM5.5 10.5l-2 2" />
-            {pinned && <circle cx="5" cy="11" r="1.5" />}
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 17v5" />
+            <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16h14v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 1 1 0 0 0 1-1V4a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v1a1 1 0 0 0 1 1 1 1 0 0 1 1 1z" />
           </svg>
         </TitleButton>
         <TitleButton
@@ -73,9 +73,9 @@ export function TitleBar() {
           active={view === 'settings'}
           title="设置"
         >
-          <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="10" cy="10" r="3" />
-            <path d="M10 1.5v2M10 16.5v2M3.05 3.05l1.414 1.414M15.536 15.536l1.414 1.414M1.5 10h2M16.5 10h2M3.05 16.95l1.414-1.414M15.536 4.464l1.414-1.414" />
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+            <circle cx="12" cy="12" r="3" />
           </svg>
         </TitleButton>
       </div>

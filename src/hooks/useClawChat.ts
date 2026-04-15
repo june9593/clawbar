@@ -81,7 +81,7 @@ export function useClawChat(gatewayUrl: string, authToken: string): UseClawChat 
           jsonrpc: '2.0',
           method: 'chat.history',
           id: historyIdRef.current,
-          params: {},
+          params: { sessionKey: 'main' },
         }));
 
         setIsConnected(true);
@@ -169,8 +169,13 @@ export function useClawChat(gatewayUrl: string, authToken: string): UseClawChat 
 
         // Detect immediate close (within 1s of open) — likely auth or protocol issue
         const livedMs = Date.now() - (openTimeRef.current || 0);
-        if (livedMs < 1000 && retriesRef.current === 0) {
-          setError(`连接被立即关闭 (code ${event.code})，请检查 Gateway 地址和认证`);
+        if (livedMs < 1000) {
+          // code 1008 = Policy Violation — usually device pairing required
+          if (event.code === 1008) {
+            setError('需要设备配对，请先在浏览器中打开 Gateway 完成配对');
+          } else {
+            setError(`连接被立即关闭 (code ${event.code})，请检查 Gateway 地址和认证`);
+          }
           retriesRef.current = maxRetries; // don't retry on immediate close
           return;
         }
