@@ -67,6 +67,19 @@ function createWindow() {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
   }
 
+  // Rewrite Origin header on WebSocket upgrade requests to the gateway
+  // so OpenClaw's allowedOrigins check passes
+  mainWindow.webContents.session.webRequest.onBeforeSendHeaders((details, callback) => {
+    const headers = { ...details.requestHeaders };
+    if (details.resourceType === 'webSocket' || details.url.startsWith('ws')) {
+      try {
+        const target = new URL(details.url.replace(/^ws/, 'http'));
+        headers['Origin'] = target.origin;
+      } catch { /* keep original */ }
+    }
+    callback({ requestHeaders: headers });
+  });
+
   // Strip frame-ancestors / X-Frame-Options from OpenClaw responses
   mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
     const headers = details.responseHeaders || {};
