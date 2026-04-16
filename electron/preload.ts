@@ -19,4 +19,35 @@ contextBridge.exposeInMainWorld('electronAPI', {
       return () => ipcRenderer.removeListener('theme:changed', handler);
     },
   },
+  ws: {
+    connect: (gatewayUrl: string, authToken: string) => ipcRenderer.invoke('ws:connect', gatewayUrl, authToken),
+    disconnect: () => ipcRenderer.invoke('ws:disconnect'),
+    send: (method: string, params: Record<string, unknown>) => ipcRenderer.invoke('ws:send', method, params),
+    isConnected: () => ipcRenderer.invoke('ws:is-connected'),
+    onStatus: (cb: (status: { connected: boolean; error: string | null }) => void) => {
+      const handler = (_e: unknown, status: { connected: boolean; error: string | null }) => cb(status);
+      ipcRenderer.on('ws:status', handler);
+      return () => ipcRenderer.removeListener('ws:status', handler);
+    },
+    onHistory: (cb: (payload: unknown) => void) => {
+      const handler = (_e: unknown, payload: unknown) => cb(payload);
+      ipcRenderer.on('ws:history', handler);
+      return () => ipcRenderer.removeListener('ws:history', handler);
+    },
+    onChatEvent: (cb: (payload: unknown) => void) => {
+      const handler = (_e: unknown, payload: unknown) => cb(payload);
+      ipcRenderer.on('ws:chat-event', handler);
+      return () => ipcRenderer.removeListener('ws:chat-event', handler);
+    },
+    onApproval: (cb: (payload: unknown) => void) => {
+      const handler = (_e: unknown, payload: unknown) => cb(payload);
+      ipcRenderer.on('ws:approval', handler);
+      return () => ipcRenderer.removeListener('ws:approval', handler);
+    },
+    onResponse: (cb: (data: { id: string; ok: boolean; payload?: unknown; error?: unknown }) => void) => {
+      const handler = (_e: unknown, data: { id: string; ok: boolean; payload?: unknown; error?: unknown }) => cb(data);
+      ipcRenderer.on('ws:response', handler);
+      return () => ipcRenderer.removeListener('ws:response', handler);
+    },
+  },
 });

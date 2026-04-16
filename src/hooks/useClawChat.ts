@@ -1,5 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import * as ed from '@noble/ed25519';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 export interface ChatMessage {
   id: string;
@@ -18,100 +17,8 @@ export interface UseClawChat {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Device Identity — Ed25519 keypair via @noble/ed25519 (pure JS)     */
+/*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
-
-interface DeviceIdentity {
-  deviceId: string;
-  publicKeyB64: string;       // base64url raw 32-byte Ed25519 public key
-  privateKeyHex: string;      // hex-encoded 32-byte private key seed
-}
-
-const DEVICE_KEY = 'clawbar-device-identity';
-const CLIENT_ID = 'openclaw-control-ui';
-const CLIENT_MODE = 'webchat';
-const ROLE = 'operator';
-const SCOPES = ['operator.admin', 'operator.approvals', 'operator.pairing'];
-
-function toBase64url(buf: Uint8Array): string {
-  let bin = '';
-  for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
-  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
-function toHex(buf: Uint8Array): string {
-  return Array.from(buf).map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-function fromHex(hex: string): Uint8Array {
-  const bytes = new Uint8Array(hex.length / 2);
-  for (let i = 0; i < hex.length; i += 2) bytes[i / 2] = parseInt(hex.slice(i, i + 2), 16);
-  return bytes;
-}
-
-function fromBase64url(b64: string): Uint8Array {
-  const s = b64.replace(/-/g, '+').replace(/_/g, '/');
-  const pad = s.length % 4 === 0 ? '' : '='.repeat(4 - (s.length % 4));
-  const bin = atob(s + pad);
-  const bytes = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  return bytes;
-}
-
-async function sha256Hex(data: Uint8Array): Promise<string> {
-  const hash = await crypto.subtle.digest('SHA-256', data.slice().buffer);
-  return toHex(new Uint8Array(hash));
-}
-
-async function loadOrCreateIdentity(): Promise<DeviceIdentity> {
-  const raw = localStorage.getItem(DEVICE_KEY);
-  if (raw) {
-    try {
-      const stored = JSON.parse(raw) as DeviceIdentity;
-      // Re-derive deviceId from publicKey to ensure correctness
-      const pubBytes = fromBase64url(stored.publicKeyB64);
-      const correctId = await sha256Hex(pubBytes);
-      if (stored.deviceId !== correctId) {
-        stored.deviceId = correctId;
-        localStorage.setItem(DEVICE_KEY, JSON.stringify(stored));
-      }
-      return stored;
-    } catch { /* regenerate */ }
-  }
-  // Generate Ed25519 keypair using @noble/ed25519
-  const privateKeyBytes = ed.etc.randomBytes(32);
-  const publicKeyBytes = await ed.getPublicKeyAsync(privateKeyBytes);
-  // Device ID = SHA-256(publicKey) as hex (OpenClaw protocol requirement)
-  const deviceId = await sha256Hex(publicKeyBytes);
-
-  const identity: DeviceIdentity = {
-    deviceId,
-    publicKeyB64: toBase64url(publicKeyBytes),
-    privateKeyHex: toHex(privateKeyBytes),
-  };
-  localStorage.setItem(DEVICE_KEY, JSON.stringify(identity));
-  return identity;
-}
-
-async function signPayload(identity: DeviceIdentity, nonce: string, token: string) {
-  const signedAt = Date.now();
-  const msg = [
-    'v2', identity.deviceId, CLIENT_ID, CLIENT_MODE, ROLE,
-    SCOPES.join(','), String(signedAt), token, nonce,
-  ].join('|');
-  const privateKeyBytes = fromHex(identity.privateKeyHex);
-  const sig = await ed.signAsync(new TextEncoder().encode(msg), privateKeyBytes);
-  return { signature: toBase64url(sig), signedAt };
-}
-
-/* ------------------------------------------------------------------ */
-/*  Protocol helpers (NOT JSON-RPC — OpenClaw custom framing)          */
-/* ------------------------------------------------------------------ */
-
-function makeReq(method: string, params: Record<string, unknown>) {
-  const id = crypto.randomUUID();
-  return { raw: JSON.stringify({ type: 'req', id, method, params }), id };
-}
 
 function textFrom(content: unknown): string {
   if (typeof content === 'string') return content;
@@ -124,195 +31,110 @@ function textFrom(content: unknown): string {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Hook                                                               */
+/*  Hook — thin IPC bridge to main-process WebSocket                   */
 /* ------------------------------------------------------------------ */
-
-const MAX_RETRIES = 3;
 
 export function useClawChat(gatewayUrl: string, authToken: string): UseClawChat {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const wsRef = useRef<WebSocket | null>(null);
-  const retries = useRef(0);
-  const identityRef = useRef<DeviceIdentity | null>(null);
-  const connectIdRef = useRef('');
-  const historyIdRef = useRef('');
-
-  const connect = useCallback(() => {
-    if (!gatewayUrl) return;
-
-    const go = async () => {
-      // Ensure device identity exists
-      if (!identityRef.current) {
-        try { identityRef.current = await loadOrCreateIdentity(); }
-        catch (e) { setError(`设备身份生成失败: ${e}`); return; }
-      }
-      // Guard against connect after cleanup
-      if (retries.current >= MAX_RETRIES) return;
-
-      const wsUrl = gatewayUrl
-        .replace(/^https:/, 'wss:')
-        .replace(/^http:/, 'ws:')
-        .replace(/\/+$/, '');
-
-      const ws = new WebSocket(wsUrl);
-      wsRef.current = ws;
-
-      ws.onopen = () => { setError(null); retries.current = 0; };
-
-      ws.onmessage = async (ev) => {
-        let d: Record<string, unknown>;
-        try { d = JSON.parse(ev.data); } catch { return; }
-
-        try {
-          /* 1. connect.challenge → sign & send connect */
-          if (d.type === 'event' && d.event === 'connect.challenge') {
-            const p = d.payload as { nonce: string };
-            const identity = identityRef.current!;
-            const { signature, signedAt } = await signPayload(identity, p.nonce, authToken);
-            const r = makeReq('connect', {
-              minProtocol: 3,
-              maxProtocol: 3,
-              client: { id: CLIENT_ID, version: 'control-ui', platform: 'electron', mode: CLIENT_MODE },
-              role: ROLE,
-              scopes: SCOPES,
-              device: {
-                id: identity.deviceId,
-                publicKey: identity.publicKeyB64,
-                signature,
-                signedAt,
-                nonce: p.nonce,
-              },
-              caps: [],
-              auth: { token: authToken },
-              locale: 'en',
-            });
-            connectIdRef.current = r.id;
-            ws.send(r.raw);
-            return;
-          }
-
-          /* 2. connect response → hello-ok → request history */
-          if (d.type === 'res' && d.id === connectIdRef.current) {
-            if (d.ok) {
-              setIsConnected(true);
-              setError(null);
-              const h = makeReq('chat.history', { sessionKey: 'main' });
-              historyIdRef.current = h.id;
-              ws.send(h.raw);
-            } else {
-              const err = d.error as Record<string, unknown> | undefined;
-              setError(`连接失败: ${err?.message || JSON.stringify(err)}`);
-            }
-            return;
-          }
-
-          /* 3. chat.history response → populate messages */
-          if (d.type === 'res' && d.id === historyIdRef.current && d.ok) {
-            const p = d.payload as { messages?: Array<{ role: string; content: unknown; timestamp?: number }> };
-            if (p?.messages) {
-              setMessages(
-                p.messages
-                  .filter(m => m.role === 'user' || m.role === 'assistant')
-                  .map((m, i) => ({
-                    id: `hist-${i}`,
-                    role: m.role as 'user' | 'assistant',
-                    content: textFrom(m.content),
-                    timestamp: m.timestamp
-                      ? new Date(m.timestamp).toISOString()
-                      : new Date().toISOString(),
-                  })),
-              );
-            }
-            return;
-          }
-
-          /* 4. chat streaming events — OpenClaw sends event="chat" with payload.state */
-          if (d.type === 'event' && d.event === 'chat') {
-            const p = (d.payload || {}) as Record<string, unknown>;
-            const state = p.state as string;
-            const msg = p.message as { role?: string; content?: unknown } | undefined;
-
-            if (state === 'delta') {
-              setIsTyping(true);
-              const text = textFrom(msg?.content);
-              if (text) {
-                setMessages(prev => {
-                  const rest = prev.filter(m => m.id !== '__stream__');
-                  return [...rest, {
-                    id: '__stream__', role: 'assistant' as const,
-                    content: text, timestamp: new Date().toISOString(),
-                  }];
-                });
-              }
-            } else if (state === 'final') {
-              const final = textFrom(msg?.content);
-              setIsTyping(false);
-              if (final) {
-                setMessages(prev => {
-                  const rest = prev.filter(m => m.id !== '__stream__');
-                  return [...rest, {
-                    id: `msg-${Date.now()}`, role: 'assistant' as const,
-                    content: final, timestamp: new Date().toISOString(),
-                  }];
-                });
-              }
-            }
-            return;
-          }
-
-          /* 5. Generic error response */
-          if (d.type === 'res' && d.ok === false) {
-            const err = d.error as Record<string, unknown> | undefined;
-            setError(`Gateway: ${err?.message || JSON.stringify(err)}`);
-          }
-        } catch (e) {
-          console.error('[ClawBar WS] handler error:', e);
-        }
-      };
-
-      ws.onclose = (ev) => {
-        setIsConnected(false);
-        wsRef.current = null;
-        if (retries.current < MAX_RETRIES) {
-          retries.current++;
-          setTimeout(connect, 3000);
-        } else {
-          setError(`连接已断开 (code ${ev.code})`);
-        }
-      };
-
-      ws.onerror = () => { setError('WebSocket 连接错误'); };
-    };
-
-    go().catch(e => setError(`连接异常: ${e}`));
-  }, [gatewayUrl, authToken]);
+  const cleanups = useRef<Array<() => void>>([]);
 
   useEffect(() => {
-    connect();
+    if (!gatewayUrl || !window.electronAPI?.ws) return;
+
+    const api = window.electronAPI.ws;
+
+    // Listen for connection status
+    cleanups.current.push(
+      api.onStatus((status) => {
+        setIsConnected(status.connected);
+        if (status.error) setError(status.error);
+        else if (status.connected) setError(null);
+      }),
+    );
+
+    // Listen for chat history
+    cleanups.current.push(
+      api.onHistory((payload) => {
+        const p = payload as { messages?: Array<{ role: string; content: unknown; timestamp?: number }> };
+        if (p?.messages) {
+          setMessages(
+            p.messages
+              .filter(m => m.role === 'user' || m.role === 'assistant')
+              .map((m, i) => ({
+                id: `hist-${i}`,
+                role: m.role as 'user' | 'assistant',
+                content: textFrom(m.content),
+                timestamp: m.timestamp
+                  ? new Date(m.timestamp).toISOString()
+                  : new Date().toISOString(),
+              })),
+          );
+        }
+      }),
+    );
+
+    // Listen for chat streaming events
+    cleanups.current.push(
+      api.onChatEvent((payload) => {
+        const p = payload as { state?: string; message?: { role?: string; content?: unknown } };
+        const state = p.state;
+        const msg = p.message;
+
+        if (state === 'delta') {
+          setIsTyping(true);
+          const text = textFrom(msg?.content);
+          if (text) {
+            setMessages(prev => {
+              const rest = prev.filter(m => m.id !== '__stream__');
+              return [...rest, {
+                id: '__stream__', role: 'assistant' as const,
+                content: text, timestamp: new Date().toISOString(),
+              }];
+            });
+          }
+        } else if (state === 'final') {
+          const final = textFrom(msg?.content);
+          setIsTyping(false);
+          if (final) {
+            setMessages(prev => {
+              const rest = prev.filter(m => m.id !== '__stream__');
+              return [...rest, {
+                id: `msg-${Date.now()}`, role: 'assistant' as const,
+                content: final, timestamp: new Date().toISOString(),
+              }];
+            });
+          }
+        }
+      }),
+    );
+
+    // Connect
+    api.connect(gatewayUrl, authToken);
+
     return () => {
-      retries.current = MAX_RETRIES;
-      wsRef.current?.close();
+      cleanups.current.forEach(fn => fn());
+      cleanups.current = [];
+      api.disconnect();
     };
-  }, [connect]);
+  }, [gatewayUrl, authToken]);
 
   const sendMessage = useCallback((text: string) => {
-    const ws = wsRef.current;
-    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    if (!window.electronAPI?.ws) return;
 
     setMessages(prev => [...prev, {
       id: `user-${Date.now()}`, role: 'user' as const,
       content: text, timestamp: new Date().toISOString(),
     }]);
     setIsTyping(true);
-    ws.send(makeReq('chat.send', {
+
+    window.electronAPI.ws.send('chat.send', {
       sessionKey: 'main',
       message: text,
       idempotencyKey: crypto.randomUUID(),
-    }).raw);
+    });
   }, []);
 
   const clearMessages = useCallback(() => {

@@ -2,6 +2,7 @@ import { app, BrowserWindow, Tray, nativeImage, nativeTheme, ipcMain, screen } f
 import * as path from 'path';
 import * as fs from 'fs';
 import { setupSettingsIPC } from './ipc/settings';
+import { setupWsBridge } from './ws-bridge';
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
@@ -62,20 +63,7 @@ function createWindow() {
 
   // --- Network interceptors (MUST be registered BEFORE loadURL) ---
 
-  // Rewrite Origin header on WebSocket upgrade requests to the gateway
-  // so OpenClaw's allowedOrigins check passes
-  mainWindow.webContents.session.webRequest.onBeforeSendHeaders((details, callback) => {
-    const headers = { ...details.requestHeaders };
-    if (details.resourceType === 'webSocket' || details.url.startsWith('ws')) {
-      try {
-        const target = new URL(details.url.replace(/^ws/, 'http'));
-        headers['Origin'] = target.origin;
-      } catch { /* keep original */ }
-    }
-    callback({ requestHeaders: headers });
-  });
-
-  // Strip frame-ancestors / X-Frame-Options from OpenClaw responses
+  // Strip frame-ancestors / X-Frame-Options from OpenClaw responses (for classic iframe mode)
   mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
     const headers = details.responseHeaders || {};
     delete headers['x-frame-options'];
@@ -252,6 +240,7 @@ app.whenReady().then(() => {
   createTray();
   setupWindowIPC();
   setupSettingsIPC();
+  setupWsBridge();
 });
 
 app.on('window-all-closed', () => {
