@@ -26,6 +26,13 @@ export interface ElectronAPI {
     onApproval(cb: (payload: unknown) => void): () => void;
     onResponse(cb: (data: { id: string; ok: boolean; payload?: unknown; error?: unknown }) => void): () => void;
   };
+  pet: {
+    onClick(): void;
+    onDrag(x: number, y: number): void;
+    onRightClick(): void;
+    onStatus(cb: (status: { connected: boolean; error: string | null }) => void): () => void;
+    onApproval(cb: (payload: unknown) => void): () => void;
+  };
 }
 
 declare global {

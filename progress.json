@@ -1,6 +1,6 @@
 {
   "project": "clawbar",
-  "sprint": 8,
+  "sprint": 9,
   "updated": "2026-04-16",
   "features": [
     {
@@ -184,6 +184,27 @@
       "status": "done",
       "owner": "dev-agent",
       "notes": "LogsView: logs.tail subscription, level filters, monospace auto-scroll. Read-only."
+    },
+    {
+      "id": "F-27",
+      "name": "Desktop pet lobster mascot",
+      "status": "in-progress",
+      "owner": "dev-agent",
+      "notes": "Desktop pet window: transparent always-on-top BrowserWindow with animated 🦞 lobster. Click → open ClawBar. Idle animations. Draggable. Notification bounce on approval."
+    },
+    {
+      "id": "F-28",
+      "name": "Pet ↔ Chat window integration",
+      "status": "todo",
+      "owner": "dev-agent",
+      "notes": "Click pet → toggle compact/classic window. Pet shows status (connected/disconnected). Context menu on pet for quick actions."
+    },
+    {
+      "id": "F-29",
+      "name": "Pet animations and states",
+      "status": "todo",
+      "owner": "designer-agent",
+      "notes": "CSS/Lottie animations: idle breathing, wave on hover, bounce on approval, sleep when disconnected."
     }
   ]
 }

@@ -152,5 +152,43 @@
     "titleBarHeight": 40,
     "inputAreaMinHeight": 52,
     "inputAreaMaxHeight": 150
+  },
+  "pet": {
+    "colors": {
+      "body": "#c96442",
+      "bodyLight": "#d97757",
+      "belly": "#e8956e",
+      "cheek": "rgba(233, 120, 80, 0.5)",
+      "eyeWhite": "#FFFFFF",
+      "eyePupil": "#1D1D1F",
+      "shadow": "rgba(0, 0, 0, 0.18)"
+    },
+    "size": {
+      "svgViewBox": "0 0 80 80",
+      "containerWidth": 100,
+      "containerHeight": 110,
+      "svgWidth": 80,
+      "svgHeight": 80,
+      "statusDot": 8,
+      "shadowWidth": 60,
+      "shadowHeight": 10
+    },
+    "animation": {
+      "idle": { "duration": "3s", "easing": "ease-in-out", "scaleMax": 1.03 },
+      "hover": { "duration": "0.3s", "easing": "ease-out", "scaleMax": 1.08, "clawWave": "0.6s" },
+      "active": { "duration": "0.4s", "easing": "cubic-bezier(0.34, 1.56, 0.64, 1)" },
+      "notification": { "duration": "0.5s", "easing": "ease-in-out", "bounceHeight": 8 },
+      "disconnected": { "duration": "5s", "opacity": 0.5, "saturation": 0.5 },
+      "sleeping": { "duration": "4s", "tiltDeg": -8, "zzzDelay": "0.6s" }
+    },
+    "statusDot": {
+      "connected": "status.connected",
+      "error": "status.disconnected",
+      "connecting": "status.connecting"
+    },
+    "contextMenu": {
+      "items": ["Chat", "Settings", "Classic Mode", "---", "Quit ClawBar"],
+      "shortcuts": { "Chat": "⌘O", "Settings": "⌘,", "Quit ClawBar": "⌘Q" }
+    }
   }
 }

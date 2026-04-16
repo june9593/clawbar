@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { setupSettingsIPC } from './ipc/settings';
 import { setupWsBridge } from './ws-bridge';
+import { createPetWindow } from './pet-window';
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
@@ -246,6 +247,12 @@ app.whenReady().then(() => {
   setupWindowIPC();
   setupSettingsIPC();
   setupWsBridge();
+  createPetWindow(
+    showWindow,
+    hideWindow,
+    () => windowVisible,
+    () => { mainWindow?.destroy(); app.quit(); },
+  );
 });
 
 app.on('window-all-closed', () => {
