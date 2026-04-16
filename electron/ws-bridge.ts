@@ -100,13 +100,11 @@ let currentToken = '';
 // Track renderer-originated request methods for routing responses
 const rendererReqs = new Map<string, string>();
 
-function getWindow(): BrowserWindow | null {
-  const wins = BrowserWindow.getAllWindows();
-  return wins[0] || null;
-}
-
 function sendToRenderer(channel: string, ...args: unknown[]) {
-  getWindow()?.webContents.send(channel, ...args);
+  // Send to ALL windows (main + pet) so both receive status updates
+  for (const win of BrowserWindow.getAllWindows()) {
+    win.webContents.send(channel, ...args);
+  }
 }
 
 function makeReq(method: string, params: Record<string, unknown>) {
