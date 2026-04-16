@@ -1,7 +1,7 @@
 {
   "project": "clawbar",
   "sprint": 7,
-  "updated": "2026-04-15",
+  "updated": "2026-04-16",
   "features": [
     {
       "id": "F-01",
@@ -118,16 +118,16 @@
     {
       "id": "F-17",
       "name": "Session management (list, switch, create, delete)",
-      "status": "todo",
+      "status": "done",
       "owner": "dev-agent",
-      "notes": "API: sessions.list, sessions.delete, sessions.patch. Show session sidebar/dropdown, switch sessionKey, create new session."
+      "notes": "Session dropdown in ChatHistory, switch with history fetch, create new session, delete with fallback. API: sessions.list/delete/patch."
     },
     {
       "id": "F-18",
       "name": "Approval notifications (exec.approval.requested)",
-      "status": "todo",
+      "status": "done",
       "owner": "dev-agent",
-      "notes": "API: exec.approval.requested event, exec.approval.resolve. Show inline approval card with Allow/Deny buttons. Badge on tray icon."
+      "notes": "ApprovalCard component with Allow/Deny buttons, pending state, multiple stacked approvals. API: exec.approval.resolve."
     },
     {
       "id": "F-19",
@@ -139,16 +139,16 @@
     {
       "id": "F-20",
       "name": "Usage statistics view",
-      "status": "todo",
+      "status": "done",
       "owner": "dev-agent",
-      "notes": "API: usage.cost, sessions.usage. Show token counts, cost breakdown, daily usage chart."
+      "notes": "UsageView component with total cost, token counts, breakdown cards. API: usage.cost. Shows 'updated X ago'."
     },
     {
       "id": "F-21",
-      "name": "Bottom tab navigation (Chat, Sessions, Skills, Usage)",
-      "status": "todo",
+      "name": "Bottom tab navigation (Chat, Usage)",
+      "status": "done",
       "owner": "dev-agent",
-      "notes": "Tab bar at bottom of compact mode. Replaces Classic toggle button."
+      "notes": "TabBar component with Chat + Usage tabs. 44px, accent active color. Replaces Classic toggle button."
     }
   ]
 }
