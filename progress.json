@@ -148,7 +148,42 @@
       "name": "Left sidebar navigation (Claude mobile style)",
       "status": "done",
       "owner": "dev-agent",
-      "notes": "Sidebar overlay with Chat/Sessions/Usage/Settings. Hamburger in TitleBar. Replaces bottom TabBar."
+      "notes": "Sidebar overlay with Lucide icons. Nav: Chat, Sessions, Usage, Cron, Agents, Skills, Logs, Settings."
+    },
+    {
+      "id": "F-22",
+      "name": "Lucide React icons",
+      "status": "done",
+      "owner": "dev-agent",
+      "notes": "Replaced all emoji icons with Lucide SVGs (MessageSquare, Clock, Bot, Puzzle, ScrollText, etc.)"
+    },
+    {
+      "id": "F-23",
+      "name": "Cron jobs view",
+      "status": "done",
+      "owner": "dev-agent",
+      "notes": "CronView: cron.status API, job cards, enabled badge, next wake. Read-only."
+    },
+    {
+      "id": "F-24",
+      "name": "Agents view",
+      "status": "done",
+      "owner": "dev-agent",
+      "notes": "AgentsView: status API, agent cards with heartbeat info. Read-only."
+    },
+    {
+      "id": "F-25",
+      "name": "Skills view",
+      "status": "done",
+      "owner": "dev-agent",
+      "notes": "SkillsView: skills.status API, skill grid with emoji, source badges, requirements. Read-only."
+    },
+    {
+      "id": "F-26",
+      "name": "Logs viewer",
+      "status": "done",
+      "owner": "dev-agent",
+      "notes": "LogsView: logs.tail subscription, level filters, monospace auto-scroll. Read-only."
     }
   ]
 }
