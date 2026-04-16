@@ -82,9 +82,11 @@ export function LogsView() {
 
     setError(null);
     let received = false;
+    let myReqId = '';
 
     const unsub = api.onResponse((resp) => {
       if (received) return;
+      if (myReqId && resp.id !== myReqId) return;
       const p = resp.payload as Record<string, unknown> | undefined;
       if (resp.ok && p && 'lines' in p && Array.isArray(p.lines)) {
         received = true;
@@ -102,7 +104,10 @@ export function LogsView() {
       }
     });
 
-    api.send('logs.tail', {}).catch(() => setError('Failed to send logs.tail'));
+    api.send('logs.tail', {}).then(r => {
+      if (r.ok && r.id) myReqId = r.id;
+      else { setError(r.error || 'Failed'); unsub(); setLoaded(true); }
+    }).catch(() => { setError('Failed to send logs.tail'); unsub(); setLoaded(true); });
 
     const timer = setTimeout(() => { if (!received) { unsub(); setLoaded(true); } }, 6000);
     return () => { clearTimeout(timer); unsub(); };
