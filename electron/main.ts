@@ -7,7 +7,6 @@ import { setupWsBridge } from './ws-bridge';
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let isPinned = false;
-let windowShown = false; // Track show/hide state explicitly (not via isVisible which has race conditions)
 
 function getWindowBoundsPath(): string {
   const homeDir = process.env.HOME || process.env.USERPROFILE || '';
@@ -90,24 +89,19 @@ function createWindow() {
   mainWindow.webContents.on('before-input-event', (_event, input) => {
     if (input.key === 'Escape' && !isPinned && mainWindow?.isVisible()) {
       mainWindow.hide();
-      windowShown = false;
     }
     if (input.key === 'w' && input.meta && !isPinned && mainWindow?.isVisible()) {
       mainWindow.hide();
-      windowShown = false;
     }
   });
 
   mainWindow.on('blur', () => {
-    if (!isPinned && mainWindow?.isVisible()) {
-      // Optionally hide on blur — controlled by settings
-    }
+    // No auto-hide on blur — user controls visibility via tray icon or pin
   });
 
   mainWindow.on('close', (e) => {
     e.preventDefault();
     mainWindow?.hide();
-    windowShown = false;
   });
 
   mainWindow.on('moved', saveWindowBounds);
@@ -139,11 +133,9 @@ function createTray() {
   tray.on('click', () => {
     if (!mainWindow) return;
 
-    // Use our own state flag — mainWindow.isVisible() has race conditions on macOS
-    // because blur/hide events fire asynchronously relative to tray click
-    if (windowShown) {
+    // Simple toggle — no debounce, no flags, just check actual visibility
+    if (mainWindow.isVisible()) {
       mainWindow.hide();
-      windowShown = false;
     } else {
       // Restore saved position or center below tray
       const saved = loadWindowBounds();
@@ -172,7 +164,6 @@ function createTray() {
       }
       mainWindow.show();
       mainWindow.focus();
-      windowShown = true;
     }
   });
 
@@ -182,8 +173,8 @@ function createTray() {
       {
         label: 'Show/Hide',
         click: () => {
-          if (windowShown) { mainWindow?.hide(); windowShown = false; }
-          else { mainWindow?.show(); mainWindow?.focus(); windowShown = true; }
+          if (mainWindow?.isVisible()) mainWindow.hide();
+          else { mainWindow?.show(); mainWindow?.focus(); }
         },
       },
       { type: 'separator' },
@@ -208,7 +199,6 @@ function setupWindowIPC() {
 
   ipcMain.on('window:hide', () => {
     mainWindow?.hide();
-    windowShown = false;
   });
 
   ipcMain.handle('window:is-pinned', () => isPinned);
