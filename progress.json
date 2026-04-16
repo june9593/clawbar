@@ -1,6 +1,6 @@
 {
   "project": "clawbar",
-  "sprint": 7,
+  "sprint": 8,
   "updated": "2026-04-16",
   "features": [
     {
@@ -8,7 +8,7 @@
       "name": "Menu bar tray icon + window toggle",
       "status": "done",
       "owner": "dev-agent",
-      "notes": "Tray icon, click to show/hide, 300ms debounce fix"
+      "notes": "Tray 🦞 emoji silhouette PNG (data URI), setIgnoreDoubleClickEvents, windowVisible flag toggle, click to show/hide"
     },
     {
       "id": "F-02",

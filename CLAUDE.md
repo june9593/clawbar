@@ -1,6 +1,6 @@
 # ClawBar
 
-macOS menu bar chat client for OpenClaw. Embeds the OpenClaw Control UI chat page in a frameless Electron popover window with Tray icon, resize/drag/pin support, and configurable Gateway URL + auth.
+macOS menu bar chat client and management dashboard for OpenClaw. Dual-mode: compact native WS chat + classic iframe embed. Left sidebar with 10 views (Overview, Chat, Approvals, Sessions, Usage, Cron, Agents, Skills, Logs, Settings).
 
 ## Commands
 
@@ -12,24 +12,25 @@ npm run build:electron   # Compile electron/ → dist-electron/
 npx tsc --noEmit         # Type-check renderer
 npx tsc -p tsconfig.node.json --noEmit  # Type-check main process
 npm run pack:mac:dmg:arm64  # Package macOS DMG (Apple Silicon)
-npm test                 # Run unit tests
 ```
 
 ## Conventions
 
 - **No hardcoded colors** — all colors via CSS variables in `src/styles/globals.css`
-- **IPC channels** — `domain:action` format (e.g. `settings:get`, `window:toggle-pin`)
-- **New IPC** — add handler in `electron/ipc/` → expose in `electron/preload.ts` → type in `types/electron.d.ts`
+- **IPC channels** — `domain:action` format (e.g. `settings:get`, `ws:connect`)
+- **New IPC** — add handler in `electron/ipc/` or `electron/ws-bridge.ts` → expose in `electron/preload.ts` → type in `types/electron.d.ts`
 - **Security** — `contextIsolation: true`, `sandbox: true`, `nodeIntegration: false`
 - **State** — Zustand stores, no React Context
-- **CLI calls** — `spawn` only (never `exec`), args as array
+- **Icons** — Lucide React only (`lucide-react`), size 18, strokeWidth 1.75
+- **WS protocol** — OpenClaw custom framing (`type:"req"`, NOT JSON-RPC). See `/memories/repo/openclaw-ws-protocol.md`
 
 ## Architecture
 
-- **Main process**: `electron/` — Tray, BrowserWindow, IPC, settings persistence
-- **Renderer**: `src/` — React app with TitleBar + ChatWebView (iframe to OpenClaw) + SettingsPanel
-- **OpenClaw integration**: iframe loads `http://<gateway>:18789/` with token/password via URL fragment
-- **Electron strips** `X-Frame-Options` and `frame-ancestors` CSP from OpenClaw responses
+- **Main process**: `electron/` — Tray, BrowserWindow, IPC, settings, WS bridge (`ws-bridge.ts` with Ed25519 auth)
+- **Renderer**: `src/` — React app with TitleBar, Sidebar, 10 view components, SettingsPanel
+- **WS Bridge**: Main-process WebSocket → IPC relay → renderer hook (`useClawChat.ts`)
+- **Classic mode**: iframe loads `http://<gateway>:18789/` with CSP header stripping
+- **Compact mode**: Native WS chat via `ws:connect/send/status/history/chat-event/approval` IPC channels
 
 ## Agent Protocol
 
