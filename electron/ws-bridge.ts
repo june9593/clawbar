@@ -97,6 +97,9 @@ let historyReqId = '';
 let currentGateway = '';
 let currentToken = '';
 
+// Track renderer-originated request methods for routing responses
+const rendererReqs = new Map<string, string>();
+
 function getWindow(): BrowserWindow | null {
   const wins = BrowserWindow.getAllWindows();
   return wins[0] || null;
@@ -207,6 +210,17 @@ async function doConnect(gatewayUrl: string, authToken: string) {
         return;
       }
 
+      /* 3.5. Renderer-initiated requests — route by method */
+      if (d.type === 'res' && typeof d.id === 'string' && rendererReqs.has(d.id)) {
+        const method = rendererReqs.get(d.id)!;
+        rendererReqs.delete(d.id);
+        if (method === 'chat.history' && d.ok) {
+          sendToRenderer('ws:history', d.payload);
+          return;
+        }
+        // Other methods fall through to generic ws:response
+      }
+
       /* 4. chat events (stream delta/final) */
       if (d.type === 'event' && d.event === 'chat') {
         sendToRenderer('ws:chat-event', d.payload);
@@ -271,6 +285,7 @@ export function setupWsBridge() {
   ipcMain.handle('ws:send', (_, method: string, params: Record<string, unknown>) => {
     if (!ws || ws.readyState !== WebSocket.OPEN) return { ok: false, error: 'not connected' };
     const r = makeReq(method, params);
+    rendererReqs.set(r.id, method);
     ws.send(r.raw);
     return { ok: true, id: r.id };
   });

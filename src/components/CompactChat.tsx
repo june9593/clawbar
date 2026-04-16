@@ -2,12 +2,17 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useClawChat } from '../hooks/useClawChat';
 import { ChatHistory } from './ChatHistory';
+import { ApprovalCard } from './ApprovalCard';
 
 export function CompactChat() {
   const gatewayUrl = useSettingsStore((s) => s.gatewayUrl);
   const authToken = useSettingsStore((s) => s.authToken);
   const updateSetting = useSettingsStore((s) => s.updateSetting);
-  const { messages, isConnected, isTyping, sendMessage, clearMessages, error } = useClawChat(gatewayUrl, authToken);
+  const {
+    messages, isConnected, isTyping, sendMessage, error,
+    sessions, currentSessionKey, switchSession, createSession, deleteSession,
+    pendingApprovals, resolveApproval,
+  } = useClawChat(gatewayUrl, authToken);
 
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -76,7 +81,13 @@ export function CompactChat() {
       )}
 
       {/* Session header */}
-      <ChatHistory onNewChat={clearMessages} />
+      <ChatHistory
+        sessions={sessions}
+        currentSessionKey={currentSessionKey}
+        onSwitchSession={switchSession}
+        onDeleteSession={deleteSession}
+        onNewChat={createSession}
+      />
 
       {/* Messages area */}
       <div style={{
@@ -100,6 +111,21 @@ export function CompactChat() {
         )}
         <div ref={messagesEndRef} />
       </div>
+
+      {/* Pending approval cards */}
+      {pendingApprovals.length > 0 && (
+        <div style={{
+          padding: '8px 14px 0',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '6px',
+          borderTop: '0.5px solid var(--color-border-primary)',
+        }}>
+          {pendingApprovals.map(a => (
+            <ApprovalCard key={a.requestId} approval={a} onResolve={resolveApproval} />
+          ))}
+        </div>
+      )}
 
       {/* Input area */}
       <div style={{
