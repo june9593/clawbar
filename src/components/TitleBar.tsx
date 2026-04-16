@@ -28,8 +28,10 @@ export function TitleBar({ onToggleSidebar }: TitleBarProps) {
     <div
       className="titlebar-drag"
       style={{
-        height: 'var(--title-bar-height)',
-        minHeight: 'var(--title-bar-height)',
+        height: '44px',
+        minHeight: '44px',
+        maxHeight: '44px',
+        boxSizing: 'border-box',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -43,7 +45,7 @@ export function TitleBar({ onToggleSidebar }: TitleBarProps) {
       }}
     >
       {/* Left: hamburger + status + identity */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '100%' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
         {/* Hamburger menu button */}
         {onToggleSidebar && (
           <div className="titlebar-no-drag">
@@ -61,17 +63,14 @@ export function TitleBar({ onToggleSidebar }: TitleBarProps) {
           borderRadius: '50%',
           background: hasGateway ? 'var(--color-status-connected)' : 'var(--color-status-disconnected)',
           flexShrink: 0,
-          display: 'inline-block',
         }} />
-        <span style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-          <LobsterIcon size={18} />
-        </span>
+        <LobsterIcon size={18} />
         <span style={{
           fontFamily: 'var(--font-display)',
           fontSize: '14px',
           fontWeight: 500,
           color: 'var(--color-text-primary)',
-          lineHeight: 1,
+          lineHeight: '44px',
         }}>
           ClawBar
         </span>
