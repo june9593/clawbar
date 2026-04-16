@@ -148,10 +148,11 @@ function createWindow() {
 }
 
 function createTray() {
-  // 🦞 emoji as black silhouette PNG 32x32, resized to 22px for menu bar
-  const lobsterDataUri = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAD/klEQVR4AeyWR6hUVxjHT6oxvRcTQhIeQdIImISYhCRgNrEvVFQQGzasKC4Unw6WjeBGF5aNImJHEUXcWFaKYkER67Oi2EWfvfv7DdznnZk7Z0ZB3Dj8//f7Tr3fOV+582J4xr9qDPgUG8fBb+HjoAuTB8MoKhnwBqvnwRxsCt30PWQMvzHYGv4Op8LhsCwqGTCMlS3gFfgl7A6bwBj+YLAzvA3FRB7NYSZiBnzBioFQuNm/KD/Dt2AMHzDo3B+QojGP3jATMQN+YcVnUOiKv1HehHdhAttv574KryUdyJvwc9gMJtDwRC+QMQM+Ss30BbZP07cPfgj/gZ62Pnc0fI+u7xFhhw/ofEQe7+afGY+YAecy5p+k70fYDQ6CusjANNr7024PX4bXYRqX0o20HjPAk5xJT0Z/H/4FV8FG0AivRXaFe+FZ2AregmnsTjfSesyAY0ycDxPcRzkKTcuDSE/1EtL68AqyHm6Ey+BFmMAAXpA0imXMAOcu5HEPigc81sNTKC8gX4dCI5T5+jCzWVhHI33iHTNDvo/uUkQNyIWwnSWeGBF80WiUFrzd7PgfPY22q2tqGvXbFibT2RIKb21qvxDu2MhiJQNMOQNsOovNAKN+Arp5ndwAzTyatKyrc8zipUv20+u8tBvpKkTMgD+ZOhR2gJfhUrgZWh/GIPEEz0ewcI2keQEugrrCVOyD3gtmImaABcW0s6hYSr9hBwNzC9IrxRNoj6CLDFID0ZszXf9j2JtyH9RSxAwwzX5iiUXItDIFLSjn6fOUiAJ4I9YO/e4X1OppNnzMrO9gJmIG/MqKndBaYD03xz2NhllsGCqAN+ItaPCrjOi2d5DGwgFkJsoawHd0Biu8fmNhObqbH0Jugl4zogA3aOn3rUiN1R3GQkfarkWUoqwBQ0Lw49OGJaOgp9ENg7hnI30tfcWw4MwldccyMAJ+AjV0CrIHzERZA5jt1Q9AHoFGvh+hq9wzNgTjQMlQA66i1WOAMaDvr9E2CDcg6eaZgZgBu5hfB8U0HrYNRNRgGS42wKzRDYHf19DyuxIpXKssYcyA9GQ/NJ466duDchymsTuXy6XnHGbwBIyiWgNMpQeLQzAWwsq+fb2B+qKdL2KA12+3VdNsUY+yogE4zzkacLhTCH6YmraZNcvyWlO0s/W/dnHH5o1Z403oEgOxaFph080Le0pbzvFEppWjfpDaoVgTEA3wZeM7LdnUGgO8CVNW2TAhS3HzrP6GPjazrHqipM90TPQsaZm236ywMqqXZUUDMlZOos+/2iuQRvkc5Bpo1Pei5q5GrxpPYoCuqOUN/v9ri+wJ/W/g37LZpIcFia7q8CQGVLdzlbOeG/DUb6CSJx4CAAD//5XH/7MAAAAGSURBVAMA+CvOQZUKd+EAAAAASUVORK5CYII=';
+  // 🦞 lobster silhouette 36x36 PNG (= 18pt @2x Retina, exact integer ratio = crisp).
+  // macOS template image: black → white on dark menu bar.
+  const lobsterDataUri = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACQAAAAkCAYAAADhAJiYAAAAzUlEQVR4nO2UWw6FIAxEO8T9rxVXgD/3JsYApS98hEn4oeP0WFCiFyvf/LxraHbmMIWL/BvZVSp7oMnKJ5jWOvumQZXOUsHA8ZhceiSKhRH7N0EQJMHazCR4q8KFMfWRzGroyIjB+Ll605+U510YP1dv+VWXmgabSS+/GShEjwfCTRzoTWg2FEaODI09GJq2MtnGFPD14DOXekSI9GsnBCLaf6umf018JbRA+dL8ClPzhQKFyQsIxt/C9yfkpgX0uglZlDv/mV5taYkidQCRsjjR213/8AAAAABJRU5ErkJggg==';
   let icon = nativeImage.createFromDataURL(lobsterDataUri);
-  icon = icon.resize({ width: 18, height: 18 });
+  // No resize: 36px = 18pt on Retina, standard menu bar size
   icon.setTemplateImage(true);
 
   tray = new Tray(icon);
