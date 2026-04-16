@@ -148,11 +148,12 @@ function createWindow() {
 }
 
 function createTray() {
-  // 🦞 lobster silhouette 36x36 PNG (= 18pt @2x Retina, exact integer ratio = crisp).
-  // macOS template image: black → white on dark menu bar.
-  const lobsterDataUri = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACQAAAAkCAYAAADhAJiYAAAAzUlEQVR4nO2UWw6FIAxEO8T9rxVXgD/3JsYApS98hEn4oeP0WFCiFyvf/LxraHbmMIWL/BvZVSp7oMnKJ5jWOvumQZXOUsHA8ZhceiSKhRH7N0EQJMHazCR4q8KFMfWRzGroyIjB+Ll605+U510YP1dv+VWXmgabSS+/GShEjwfCTRzoTWg2FEaODI09GJq2MtnGFPD14DOXekSI9GsnBCLaf6umf018JbRA+dL8ClPzhQKFyQsIxt/C9yfkpgX0uglZlDv/mV5taYkidQCRsjjR213/8AAAAABJRU5ErkJggg==';
-  let icon = nativeImage.createFromDataURL(lobsterDataUri);
-  // No resize: 36px = 18pt on Retina, standard menu bar size
+  // 🦞 Apple Color Emoji → black silhouette 32x32 PNG data URI (Playwright-rendered).
+  // 32px = 16pt @2x Retina = standard macOS menu bar icon size. No resize = crisp.
+  // macOS template image: auto-inverts black → white on dark menu bar.
+  const lobsterPng = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAE8klEQVR4AeyXW4ydUxTH14y7GpcxboOaxKAmEh2NukRCPUjVncy4JCVUWhEdl3oRoh8JQkSY8dKGNKiIOe0DiVZcoiJuERHEuHTaDmXEpa2WMYoav985c25zzvnOePDWk/X/1lp7r72/tddee+3vNEb93z6YLACzkojGsYiGqPPTDpNDwEJwHKhJqQ70trfvwch7wMOgk4ln8/YjkdOoCbszMTgK9IBnwDGgKqU60DM4eBmjnORv+O7ASHTA06iZzrlgGvgTnAxchJFELKc0Bw7F9FawK2DhMT0inOxAeBrtQufx4DywJ5DO53ERqKA0BzqxzofbrTgJ/SBAGozpUCyJ2A19ypLW1r3h2TY4/dEIPxUcAKQmHui5ccgF0rCgTBBMovwKdOBo+reBjf1dDY5rYT/akrbYsWB42BdNXXVuNmd+1QYcAfYHeTosxioT2InyBhP5dhp2AMnVabsZZbQ7E7Ph94MrkqFoh58OFs9ZPXgzfD8wDLR3HGKWtoeZkBWLD42KWrm0HnUElNLvKHOA+fE1/AbwEHBqVzyEfCkY3yqkHP0DWx9JgzxKfzUd6O/q+gjDV0HpoL3Q1yURT8E3glZwNjDp6EtWIL8MzI3S1X9F20pQQTUd6M5kPEIZRpRGoT/piAwOeCz/oG8MmB+wGOltX+6LP0VZCjYBSZt3GPOJykTUdGDc8H34xyBPs5KBmB6ROM6taIjibyZ141hUj+kFcHMBFlt5rMSB0kjSlCMnyknVn1tovgu8DUaByfYADpyIfBoopX1RZoArwU1A+oaHyboKXpXSHPAY+iKdeJrRr4ANwD1/HG4/rEDO5Sm4gxbHvA43J1bDrSHT+jvCaopaJAcVtXHpjQir3zmo88DV4EJgTpiYXyKfAvIhRsyS28H2hKF+jxZPifqNyNeAud0D4elALFJjUSxKZ0V2ktdo0Xv3cAqyR88VDCB/BkwuWBlZJ3TyL1rbgBXQ0uyYFcvaIp+YdOWoqgN97WE2X47JJcDKtg2uE0bGyS1SNFWQq7ffaDiHJ+RbrA4H864dCjlikao60DMYDjSMD2J6MHAVX8ANobedL6gWAdsc24Ktzn4OPwF8AB4DHl1Ykao6QLcrtnjcjey9fh/cCLwFfx48CzwVsAL58jfRvP9NPiNBOkU/bVbKmfDvQBnVckCjM3j4ktvg7n8zm2qGP4H+EjApYWWk0zr4CK0vAsuyp4GjG9yG4SJoLlKaA579RSzrR8z9mHiXQm94UcNQGiXlPDCN71Xmz8jm0AZkE9KXZpDv5RgaFcQipTmwCbMRNtuJX0B2RRYbxDAJJzrgzfmLnUs/DB314uqlAv5gG/iJY1gRtTQHGJOjhe3ZF6qY5fDkZx5rQCnpkMkWrNQXOfcoDnhvlNqVyRqVNVRT+gbDLx5XZU3AJPFk5KOBniUj0JIkSeP4SnVIu2xnrUddB1iBNs1M4P7+Bp8KHgUmGKxAXkJ9OHBxxBg7FyZk07KI/FdVwbBUcPJSvUJenGvZgiNrc2LMh1ukrHKIBbJWdKLdGdHgPWFVXBscnUj51XWApbjvm3Egv5cchjDBak3rDZj/hthK9fPE1LLNfr3W7KzWwT2xnPbrgJXtuXH+JNz2RfDbgeUbVp/qRmDiFGsiXJHF5hb6rgLy6+H+GbEArUOeNP1nByY98yQNdzrwv0eg3k78CwAA//9drIMAAAAABklEQVQDAIDrC1B2E2orAAAAAElFTkSuQmCC';
+  let icon = nativeImage.createFromDataURL(lobsterPng);
+  // No resize — 32px is exactly 16pt on Retina (2x). Standard tray icon size.
   icon.setTemplateImage(true);
 
   tray = new Tray(icon);
