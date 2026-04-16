@@ -7,7 +7,7 @@ import { setupWsBridge } from './ws-bridge';
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let isPinned = false;
-let lastHideTime = 0; // Track when window was last hidden (for tray click debounce)
+let windowShown = false; // Track show/hide state explicitly (not via isVisible which has race conditions)
 
 function getWindowBoundsPath(): string {
   const homeDir = process.env.HOME || process.env.USERPROFILE || '';
@@ -90,9 +90,11 @@ function createWindow() {
   mainWindow.webContents.on('before-input-event', (_event, input) => {
     if (input.key === 'Escape' && !isPinned && mainWindow?.isVisible()) {
       mainWindow.hide();
+      windowShown = false;
     }
     if (input.key === 'w' && input.meta && !isPinned && mainWindow?.isVisible()) {
       mainWindow.hide();
+      windowShown = false;
     }
   });
 
@@ -105,6 +107,7 @@ function createWindow() {
   mainWindow.on('close', (e) => {
     e.preventDefault();
     mainWindow?.hide();
+    windowShown = false;
   });
 
   mainWindow.on('moved', saveWindowBounds);
@@ -112,34 +115,19 @@ function createWindow() {
 }
 
 function createTray() {
-  // Create a 32x32 (16pt @2x) lobster claw PNG template icon
-  // macOS template images: use only black (#000) and alpha
-  // Electron nativeImage does NOT support SVG data URIs — must be PNG
-  const iconPath = path.join(__dirname, '../resources/iconTemplate.png');
-  const icon2xPath = path.join(__dirname, '../resources/iconTemplate@2x.png');
-  let icon: Electron.NativeImage;
-
-  try {
-    // Try loading @2x for Retina
-    if (fs.existsSync(icon2xPath)) {
-      icon = nativeImage.createFromPath(icon2xPath);
-      icon = icon.resize({ width: 16, height: 16 });
-    } else {
-      icon = nativeImage.createFromPath(iconPath);
-    }
-    icon.setTemplateImage(true);
-  } catch {
-    icon = nativeImage.createEmpty();
-  }
-
-  tray = new Tray(icon);
+  // Use emoji as tray title — clearest and most reliable on macOS
+  tray = new Tray(nativeImage.createEmpty());
+  tray.setTitle('🦞');
   tray.setToolTip('ClawBar');
 
   tray.on('click', () => {
     if (!mainWindow) return;
 
-    if (mainWindow.isVisible()) {
+    // Use our own state flag — mainWindow.isVisible() has race conditions on macOS
+    // because blur/hide events fire asynchronously relative to tray click
+    if (windowShown) {
       mainWindow.hide();
+      windowShown = false;
     } else {
       // Restore saved position or center below tray
       const saved = loadWindowBounds();
@@ -168,6 +156,7 @@ function createTray() {
       }
       mainWindow.show();
       mainWindow.focus();
+      windowShown = true;
     }
   });
 
@@ -177,8 +166,8 @@ function createTray() {
       {
         label: 'Show/Hide',
         click: () => {
-          if (mainWindow?.isVisible()) mainWindow.hide();
-          else { mainWindow?.show(); mainWindow?.focus(); }
+          if (windowShown) { mainWindow?.hide(); windowShown = false; }
+          else { mainWindow?.show(); mainWindow?.focus(); windowShown = true; }
         },
       },
       { type: 'separator' },
@@ -203,6 +192,7 @@ function setupWindowIPC() {
 
   ipcMain.on('window:hide', () => {
     mainWindow?.hide();
+    windowShown = false;
   });
 
   ipcMain.handle('window:is-pinned', () => isPinned);

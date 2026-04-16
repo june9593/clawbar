@@ -29,23 +29,26 @@ export function TitleBar({ onToggleSidebar }: TitleBarProps) {
       className="titlebar-drag"
       style={{
         height: '44px',
-        minHeight: '44px',
-        maxHeight: '44px',
-        boxSizing: 'border-box',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '0 14px',
+        padding: '0 12px 0 14px',
         background: 'var(--color-surface-title-bar)',
         backdropFilter: 'saturate(180%) blur(20px)',
         WebkitBackdropFilter: 'saturate(180%) blur(20px)',
         borderBottom: '0.5px solid var(--color-border-primary)',
         userSelect: 'none',
         flexShrink: 0,
+        overflow: 'hidden',
       }}
     >
       {/* Left: hamburger + status + identity */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '6px',
+        height: '44px',
+      }}>
         {/* Hamburger menu button */}
         {onToggleSidebar && (
           <div className="titlebar-no-drag">
@@ -57,27 +60,31 @@ export function TitleBar({ onToggleSidebar }: TitleBarProps) {
             </TitleButton>
           </div>
         )}
-        <span style={{
+        <div style={{
           width: '8px',
           height: '8px',
           borderRadius: '50%',
           background: hasGateway ? 'var(--color-status-connected)' : 'var(--color-status-disconnected)',
           flexShrink: 0,
         }} />
-        <LobsterIcon size={18} />
-        <span style={{
+        <div style={{ display: 'flex', alignItems: 'center', height: '44px', flexShrink: 0 }}>
+          <LobsterIcon size={18} />
+        </div>
+        <div style={{
           fontFamily: 'var(--font-display)',
           fontSize: '14px',
           fontWeight: 500,
           color: 'var(--color-text-primary)',
-          lineHeight: '44px',
+          height: '44px',
+          display: 'flex',
+          alignItems: 'center',
         }}>
           ClawBar
-        </span>
+        </div>
       </div>
 
       {/* Right buttons */}
-      <div className="titlebar-no-drag" style={{ display: 'flex', alignItems: 'center', gap: '1px' }}>
+      <div className="titlebar-no-drag" style={{ display: 'flex', alignItems: 'center', gap: '1px', height: '44px' }}>
         <TitleButton
           onClick={handleTogglePin}
           active={pinned}
