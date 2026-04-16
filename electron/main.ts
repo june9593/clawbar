@@ -8,6 +8,41 @@ let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let isPinned = false;
 
+function showWindow() {
+  if (!mainWindow) return;
+  const saved = loadWindowBounds();
+  if (saved) {
+    const displays = screen.getAllDisplays();
+    const isOnScreen = displays.some(d => {
+      const db = d.bounds;
+      return saved.x >= db.x && saved.x < db.x + db.width &&
+             saved.y >= db.y && saved.y < db.y + db.height;
+    });
+    if (isOnScreen) {
+      mainWindow.setBounds(saved);
+    } else {
+      positionNearTray();
+    }
+  } else {
+    positionNearTray();
+  }
+  mainWindow.show();
+  mainWindow.focus();
+}
+
+function positionNearTray() {
+  if (!tray || !mainWindow) return;
+  const trayBounds = tray.getBounds();
+  const windowBounds = mainWindow.getBounds();
+  const x = Math.round(trayBounds.x + trayBounds.width / 2 - windowBounds.width / 2);
+  const y = trayBounds.y + trayBounds.height + 4;
+  mainWindow.setPosition(x, y);
+}
+
+function hideWindow() {
+  mainWindow?.hide();
+}
+
 function getWindowBoundsPath(): string {
   const homeDir = process.env.HOME || process.env.USERPROFILE || '';
   return path.join(homeDir, '.clawbar', 'window-bounds.json');
@@ -88,20 +123,20 @@ function createWindow() {
 
   mainWindow.webContents.on('before-input-event', (_event, input) => {
     if (input.key === 'Escape' && !isPinned && mainWindow?.isVisible()) {
-      mainWindow.hide();
+      hideWindow();
     }
     if (input.key === 'w' && input.meta && !isPinned && mainWindow?.isVisible()) {
-      mainWindow.hide();
+      hideWindow();
     }
   });
 
   mainWindow.on('blur', () => {
-    // No auto-hide on blur — user controls visibility via tray icon or pin
+    // No auto-hide on blur
   });
 
   mainWindow.on('close', (e) => {
     e.preventDefault();
-    mainWindow?.hide();
+    hideWindow();
   });
 
   mainWindow.on('moved', saveWindowBounds);
@@ -109,61 +144,20 @@ function createWindow() {
 }
 
 function createTray() {
-  // Load lobster template PNG icon (black on transparent)
-  // macOS auto-renders template images: black→white in dark menu bar
-  const icon2xPath = path.join(__dirname, '../resources/iconTemplate@2x.png');
-  const iconPath = path.join(__dirname, '../resources/iconTemplate.png');
-  let icon: Electron.NativeImage;
-
-  try {
-    if (fs.existsSync(icon2xPath)) {
-      icon = nativeImage.createFromPath(icon2xPath);
-    } else {
-      icon = nativeImage.createFromPath(iconPath);
-    }
-    icon = icon.resize({ width: 18, height: 18 });
-    icon.setTemplateImage(true);
-  } catch {
-    icon = nativeImage.createEmpty();
-  }
-
-  tray = new Tray(icon);
+  // 🦞 emoji as tray icon — use setTitle for macOS menu bar text
+  tray = new Tray(nativeImage.createEmpty());
+  tray.setTitle('🦞');
   tray.setToolTip('ClawBar');
+
+  // Toggle: track desired state to avoid async isVisible() race conditions
+  let wantVisible = false;
 
   tray.on('click', () => {
     if (!mainWindow) return;
-
-    // Simple toggle — no debounce, no flags, just check actual visibility
-    if (mainWindow.isVisible()) {
-      mainWindow.hide();
+    if (mainWindow.isVisible() && mainWindow.isFocused()) {
+      hideWindow();
     } else {
-      // Restore saved position or center below tray
-      const saved = loadWindowBounds();
-      if (saved) {
-        const displays = screen.getAllDisplays();
-        const isOnScreen = displays.some(d => {
-          const db = d.bounds;
-          return saved.x >= db.x && saved.x < db.x + db.width &&
-                 saved.y >= db.y && saved.y < db.y + db.height;
-        });
-        if (isOnScreen) {
-          mainWindow.setBounds(saved);
-        } else {
-          const trayBounds = tray!.getBounds();
-          const windowBounds = mainWindow.getBounds();
-          const x = Math.round(trayBounds.x + trayBounds.width / 2 - windowBounds.width / 2);
-          const y = trayBounds.y + trayBounds.height + 4;
-          mainWindow.setPosition(x, y);
-        }
-      } else {
-        const trayBounds = tray!.getBounds();
-        const windowBounds = mainWindow.getBounds();
-        const x = Math.round(trayBounds.x + trayBounds.width / 2 - windowBounds.width / 2);
-        const y = trayBounds.y + trayBounds.height + 4;
-        mainWindow.setPosition(x, y);
-      }
-      mainWindow.show();
-      mainWindow.focus();
+      showWindow();
     }
   });
 
@@ -173,8 +167,8 @@ function createTray() {
       {
         label: 'Show/Hide',
         click: () => {
-          if (mainWindow?.isVisible()) mainWindow.hide();
-          else { mainWindow?.show(); mainWindow?.focus(); }
+          if (mainWindow?.isVisible()) hideWindow();
+          else showWindow();
         },
       },
       { type: 'separator' },
@@ -198,7 +192,7 @@ function setupWindowIPC() {
   });
 
   ipcMain.on('window:hide', () => {
-    mainWindow?.hide();
+    hideWindow();
   });
 
   ipcMain.handle('window:is-pinned', () => isPinned);
