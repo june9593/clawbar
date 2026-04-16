@@ -127,28 +127,28 @@
       "name": "Approval notifications (exec.approval.requested)",
       "status": "done",
       "owner": "dev-agent",
-      "notes": "ApprovalCard component with Allow/Deny buttons, pending state, multiple stacked approvals. API: exec.approval.resolve."
+      "notes": "Rewrote to match real OpenClaw format (id, request.command/cwd/host/agentId, expiresAtMs). Three buttons: Allow once, Always allow, Deny. Auto-expire. Details table."
     },
     {
       "id": "F-19",
-      "name": "Skills management panel",
-      "status": "todo",
+      "name": "Sessions list page",
+      "status": "done",
       "owner": "dev-agent",
-      "notes": "API: skills.status, skills.install, skills.update. List installed skills with enable/disable toggle."
+      "notes": "SessionsView component with full session list, agent badges, click-to-switch, delete confirmation, time-ago display."
     },
     {
       "id": "F-20",
       "name": "Usage statistics view",
       "status": "done",
       "owner": "dev-agent",
-      "notes": "UsageView component with total cost, token counts, breakdown cards. API: usage.cost. Shows 'updated X ago'."
+      "notes": "Fixed: calls sessions.usage with date range params. Date pills (Today/7d/30d). Per-session breakdown with tokens, cost, messages, tool calls."
     },
     {
       "id": "F-21",
-      "name": "Bottom tab navigation (Chat, Usage)",
+      "name": "Left sidebar navigation (Claude mobile style)",
       "status": "done",
       "owner": "dev-agent",
-      "notes": "TabBar component with Chat + Usage tabs. 44px, accent active color. Replaces Classic toggle button."
+      "notes": "Sidebar overlay with Chat/Sessions/Usage/Settings. Hamburger in TitleBar. Replaces bottom TabBar."
     }
   ]
 }
