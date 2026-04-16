@@ -3,11 +3,12 @@ import { useSettingsStore } from '../stores/settingsStore';
 import { useClawChat } from '../hooks/useClawChat';
 import { ChatHistory } from './ChatHistory';
 import { ApprovalCard } from './ApprovalCard';
+import { TabBar, type TabId } from './TabBar';
+import { UsageView } from './UsageView';
 
 export function CompactChat() {
   const gatewayUrl = useSettingsStore((s) => s.gatewayUrl);
   const authToken = useSettingsStore((s) => s.authToken);
-  const updateSetting = useSettingsStore((s) => s.updateSetting);
   const {
     messages, isConnected, isTyping, sendMessage, error,
     sessions, currentSessionKey, switchSession, createSession, deleteSession,
@@ -15,6 +16,7 @@ export function CompactChat() {
   } = useClawChat(gatewayUrl, authToken);
 
   const [input, setInput] = useState('');
+  const [activeTab, setActiveTab] = useState<TabId>('chat');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -80,152 +82,138 @@ export function CompactChat() {
         </div>
       )}
 
-      {/* Session header */}
-      <ChatHistory
-        sessions={sessions}
-        currentSessionKey={currentSessionKey}
-        onSwitchSession={switchSession}
-        onDeleteSession={deleteSession}
-        onNewChat={createSession}
-      />
+      {activeTab === 'chat' ? (
+        <>
+          {/* Session header */}
+          <ChatHistory
+            sessions={sessions}
+            currentSessionKey={currentSessionKey}
+            onSwitchSession={switchSession}
+            onDeleteSession={deleteSession}
+            onNewChat={createSession}
+          />
 
-      {/* Messages area */}
-      <div style={{
-        flex: 1,
-        minHeight: 0,
-        overflowY: 'auto',
-        padding: '14px 14px 8px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '8px',
-      }}>
-        {isEmpty ? (
-          <EmptyState />
-        ) : (
-          <>
-            {messages.map((msg) => (
-              <MessageBubble key={msg.id} message={msg} formatTime={formatTime} />
-            ))}
-            {isTyping && <TypingIndicator />}
-          </>
-        )}
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Pending approval cards */}
-      {pendingApprovals.length > 0 && (
-        <div style={{
-          padding: '8px 14px 0',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '6px',
-          borderTop: '0.5px solid var(--color-border-primary)',
-        }}>
-          {pendingApprovals.map(a => (
-            <ApprovalCard key={a.requestId} approval={a} onResolve={resolveApproval} />
-          ))}
-        </div>
-      )}
-
-      {/* Input area */}
-      <div style={{
-        padding: '8px 12px 10px',
-        borderTop: '0.5px solid var(--color-border-primary)',
-        background: 'var(--color-bg-primary)',
-        display: 'flex',
-        alignItems: 'flex-end',
-        gap: '8px',
-      }}>
-        {/* Classic toggle pill — Apple 980px radius */}
-        <button
-          onClick={() => updateSetting('chatMode', 'classic')}
-          style={{
-            padding: '3px 10px',
-            borderRadius: '980px',
-            border: '1px solid var(--color-border-primary)',
-            background: 'transparent',
-            color: 'var(--color-text-tertiary)',
-            fontSize: '11px',
-            fontFamily: 'var(--font-sans)',
-            lineHeight: 1.33,
-            cursor: 'pointer',
-            whiteSpace: 'nowrap',
-            flexShrink: 0,
-            marginBottom: '3px',
-            transition: 'color 0.15s, border-color 0.15s',
-          }}
-          title="Switch to classic view"
-        >
-          Classic ↗
-        </button>
-
-        {/* Textarea */}
-        <textarea
-          ref={textareaRef}
-          value={input}
-          onChange={(e) => { setInput(e.target.value); adjustTextarea(); }}
-          onKeyDown={handleKeyDown}
-          placeholder="Message..."
-          rows={1}
-          style={{
+          {/* Messages area */}
+          <div style={{
             flex: 1,
-            resize: 'none',
-            border: 'none',
-            borderRadius: '18px',
-            padding: '8px 14px',
-            fontSize: '14px',
-            fontFamily: 'var(--font-sans)',
-            color: 'var(--color-text-primary)',
-            background: 'var(--color-bg-input)',
-            outline: 'none',
-            lineHeight: 1.47,
-            overflow: 'hidden',
-            transition: 'background 0.15s',
-          }}
-        />
-
-        {/* Send button — 32px circle */}
-        <button
-          onClick={handleSend}
-          disabled={!hasInput}
-          style={{
-            width: '32px',
-            height: '32px',
-            borderRadius: '50%',
-            border: 'none',
-            background: hasInput ? 'var(--color-accent)' : 'var(--color-bg-tertiary)',
-            color: hasInput ? 'var(--color-bubble-user-text)' : 'var(--color-text-tertiary)',
+            minHeight: 0,
+            overflowY: 'auto',
+            padding: '14px 14px 8px',
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: hasInput ? 'pointer' : 'default',
-            flexShrink: 0,
-            marginBottom: '3px',
-            transition: 'background 0.2s, color 0.2s, transform 0.1s',
-            fontSize: '16px',
-            fontWeight: 600,
-          }}
-          title="Send"
-        >
-          ↑
-        </button>
-      </div>
+            flexDirection: 'column',
+            gap: '8px',
+          }}>
+            {isEmpty ? (
+              <EmptyState />
+            ) : (
+              <>
+                {messages.map((msg) => (
+                  <MessageBubble key={msg.id} message={msg} formatTime={formatTime} />
+                ))}
+                {isTyping && <TypingIndicator />}
+              </>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
 
-      {/* Connection status dot */}
-      {!error && (
-        <div style={{
-          position: 'absolute',
-          bottom: '14px',
-          right: '58px',
-          width: '6px',
-          height: '6px',
-          borderRadius: '50%',
-          background: isConnected
-            ? 'var(--color-status-connected)'
-            : 'var(--color-status-disconnected)',
-          transition: 'background 0.3s',
-        }} />
+          {/* Pending approval cards */}
+          {pendingApprovals.length > 0 && (
+            <div style={{
+              padding: '8px 14px 0',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '6px',
+              borderTop: '0.5px solid var(--color-border-primary)',
+            }}>
+              {pendingApprovals.map(a => (
+                <ApprovalCard key={a.requestId} approval={a} onResolve={resolveApproval} />
+              ))}
+            </div>
+          )}
+
+          {/* Input area */}
+          <div style={{
+            padding: '8px 12px 10px',
+            borderTop: '0.5px solid var(--color-border-primary)',
+            background: 'var(--color-bg-primary)',
+            display: 'flex',
+            alignItems: 'flex-end',
+            gap: '8px',
+          }}>
+            {/* Textarea */}
+            <textarea
+              ref={textareaRef}
+              value={input}
+              onChange={(e) => { setInput(e.target.value); adjustTextarea(); }}
+              onKeyDown={handleKeyDown}
+              placeholder="Message..."
+              rows={1}
+              style={{
+                flex: 1,
+                resize: 'none',
+                border: 'none',
+                borderRadius: '18px',
+                padding: '8px 14px',
+                fontSize: '14px',
+                fontFamily: 'var(--font-sans)',
+                color: 'var(--color-text-primary)',
+                background: 'var(--color-bg-input)',
+                outline: 'none',
+                lineHeight: 1.47,
+                overflow: 'hidden',
+                transition: 'background 0.15s',
+              }}
+            />
+
+            {/* Send button — 32px circle */}
+            <button
+              onClick={handleSend}
+              disabled={!hasInput}
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '50%',
+                border: 'none',
+                background: hasInput ? 'var(--color-accent)' : 'var(--color-bg-tertiary)',
+                color: hasInput ? 'var(--color-bubble-user-text)' : 'var(--color-text-tertiary)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: hasInput ? 'pointer' : 'default',
+                flexShrink: 0,
+                marginBottom: '3px',
+                transition: 'background 0.2s, color 0.2s, transform 0.1s',
+                fontSize: '16px',
+                fontWeight: 600,
+              }}
+              title="Send"
+            >
+              ↑
+            </button>
+          </div>
+
+          {/* Connection status dot */}
+          {!error && (
+            <div style={{
+              position: 'absolute',
+              bottom: '58px',
+              right: '58px',
+              width: '6px',
+              height: '6px',
+              borderRadius: '50%',
+              background: isConnected
+                ? 'var(--color-status-connected)'
+                : 'var(--color-status-disconnected)',
+              transition: 'background 0.3s',
+            }} />
+          )}
+        </>
+      ) : (
+        <UsageView />
       )}
+
+      {/* Bottom tab bar */}
+      <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
     </div>
   );
 }
