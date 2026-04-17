@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useWsRequest } from '../hooks/useWsRequest';
 import { ViewShell } from './views/ViewShell';
 import { LoadingState, ErrorState, EmptyState } from './views/ViewStates';
 
@@ -15,34 +15,8 @@ interface Skill {
 }
 
 export function SkillsView() {
-  const [skills, setSkills] = useState<Skill[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const api = window.electronAPI?.ws;
-    if (!api) { setLoading(false); return; }
-
-    let cancelled = false;
-
-    const unsub = api.onResponse((resp) => {
-      if (cancelled) return;
-      const p = resp.payload as Record<string, unknown> | undefined;
-      if (resp.ok && p && 'skills' in p) {
-        setSkills((p.skills as Skill[]) ?? []);
-        setLoading(false);
-      }
-    });
-
-    api.send('skills.status', {}).catch(() => {
-      if (!cancelled) {
-        setError('Failed to send skills.status');
-        setLoading(false);
-      }
-    });
-
-    return () => { cancelled = true; unsub(); };
-  }, []);
+  const { data, loading, error } = useWsRequest<{ skills: Skill[] }>('skills.status', {});
+  const skills = data?.skills ?? [];
 
   return (
     <ViewShell title="Skills">
