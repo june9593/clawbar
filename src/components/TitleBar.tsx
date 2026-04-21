@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Menu, Pin, PinOff, Settings } from 'lucide-react';
+import { Menu, Pin, PinOff, RotateCw, Settings } from 'lucide-react';
 import { LobsterIcon } from './LobsterIcon';
 import { useSettingsStore } from '../stores/settingsStore';
+import { useWebViewStore } from '../stores/webviewStore';
 
 interface TitleBarProps {
   onToggleSidebar?: () => void;
@@ -11,6 +12,8 @@ export function TitleBar({ onToggleSidebar }: TitleBarProps) {
   const view = useSettingsStore((s) => s.view);
   const setView = useSettingsStore((s) => s.setView);
   const gatewayUrl = useSettingsStore((s) => s.gatewayUrl);
+  const chatMode = useSettingsStore((s) => s.chatMode);
+  const reloadWebView = useWebViewStore((s) => s.reload);
   const [pinned, setPinned] = useState(false);
 
   const handleTogglePin = async () => {
@@ -85,6 +88,14 @@ export function TitleBar({ onToggleSidebar }: TitleBarProps) {
 
       {/* Right buttons */}
       <div className="titlebar-no-drag" style={{ display: 'flex', alignItems: 'center', gap: '1px', height: '44px' }}>
+        {chatMode === 'classic' && view === 'chat' && (
+          <TitleButton
+            onClick={reloadWebView}
+            title="重新加载"
+          >
+            <RotateCw size={14} strokeWidth={1.75} />
+          </TitleButton>
+        )}
         <TitleButton
           onClick={handleTogglePin}
           active={pinned}

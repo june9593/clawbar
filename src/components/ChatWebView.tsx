@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
 import { useSettingsStore } from '../stores/settingsStore';
+import { useWebViewStore } from '../stores/webviewStore';
 
 export function ChatWebView() {
   const gatewayUrl = useSettingsStore((s) => s.gatewayUrl);
@@ -8,23 +8,10 @@ export function ChatWebView() {
   const authPassword = useSettingsStore((s) => s.authPassword);
   const hydrated = useSettingsStore((s) => s.hydrated);
   const setView = useSettingsStore((s) => s.setView);
-  const [loadError, setLoadError] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const retryKey = useWebViewStore((s) => s.reloadKey);
 
   // Block iframe when auth is required but credentials missing
   const authIncomplete = (authMode === 'token' && !authToken) || (authMode === 'password' && !authPassword);
-
-  // Timeout fallback: if iframe hasn't loaded after 10s, show error
-  useEffect(() => {
-    if (!loading || !gatewayUrl || authIncomplete || !hydrated) return;
-    const timer = setTimeout(() => {
-      if (loading) {
-        setLoading(false);
-        setLoadError(true);
-      }
-    }, 10000);
-    return () => clearTimeout(timer);
-  }, [loading, gatewayUrl, authIncomplete, hydrated]);
 
   // Wait for settings to hydrate from disk before deciding to mount iframe
   // (otherwise we mount with default auth, which OpenClaw rejects)
@@ -46,108 +33,10 @@ export function ChatWebView() {
     chatUrl += `#password=${encodeURIComponent(authPassword)}`;
   }
 
-  if (loadError) {
-    return (
-      <div style={{
-        width: '100%', height: '100%',
-        display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center',
-        gap: '20px', padding: '40px 32px',
-        background: 'var(--color-bg-primary)',
-      }}>
-        <div style={{
-          width: '64px', height: '64px', borderRadius: '16px',
-          background: 'var(--color-surface-card)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: '28px',
-        }}>
-          ⚠️
-        </div>
-        <div style={{ textAlign: 'center' }}>
-          <p style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: '17px', fontWeight: 600,
-            color: 'var(--color-text-primary)',
-            letterSpacing: '-0.2px', marginBottom: '6px',
-          }}>
-            无法连接到 OpenClaw
-          </p>
-          <p style={{
-            fontSize: '14px', color: 'var(--color-text-secondary)',
-            letterSpacing: '-0.16px', lineHeight: 1.47,
-          }}>
-            请确认 Gateway 已启动
-          </p>
-          <p style={{
-            fontSize: '12px', color: 'var(--color-text-tertiary)',
-            fontFamily: 'var(--font-mono)', marginTop: '4px',
-          }}>
-            {gatewayUrl}
-          </p>
-        </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button
-            onClick={() => { setLoadError(false); setLoading(true); }}
-            style={{
-              padding: '8px 20px', borderRadius: '8px',
-              border: '1px solid var(--color-accent)',
-              background: 'transparent',
-              color: 'var(--color-accent)',
-              fontSize: '14px', fontWeight: 400,
-              cursor: 'pointer', fontFamily: 'inherit',
-              letterSpacing: '-0.16px',
-              transition: 'filter 0.12s',
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.filter = 'brightness(1.15)')}
-            onMouseLeave={(e) => (e.currentTarget.style.filter = 'none')}
-          >
-            重试
-          </button>
-          <button
-            onClick={() => setView('settings')}
-            style={{
-              padding: '8px 20px', borderRadius: '8px',
-              border: 'none',
-              background: 'var(--color-accent)',
-              color: 'var(--color-bubble-user-text)',
-              fontSize: '14px', fontWeight: 400,
-              cursor: 'pointer', fontFamily: 'inherit',
-              letterSpacing: '-0.16px',
-            }}
-          >
-            打开设置
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="flex-1 h-full relative" style={{ backgroundColor: 'var(--color-bg-chat)' }}>
-      {loading && (
-        <div className="absolute inset-0 flex items-center justify-center"
-          style={{ background: 'var(--color-bg-primary)' }}>
-          <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontSize: '28px', animation: 'pulse 1.8s ease-in-out infinite' }}>🦞</span>
-            <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-              {[0, 1, 2].map(i => (
-                <span key={i} style={{
-                  width: '4px', height: '4px', borderRadius: '50%',
-                  background: 'var(--color-text-tertiary)',
-                  animation: `bounce 1.4s infinite ${i * 0.2}s`,
-                }} />
-              ))}
-            </div>
-            <p style={{ fontSize: '12px', color: 'var(--color-text-tertiary)', letterSpacing: '-0.08px' }}>连接中...</p>
-            <style>{`
-              @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(0.95); } }
-              @keyframes bounce { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-4px); } }
-            `}</style>
-          </div>
-        </div>
-      )}
       <iframe
-        key={chatUrl}
+        key={`${chatUrl}#${retryKey}`}
         src={chatUrl}
         className="w-full h-full border-0"
         style={{
@@ -155,9 +44,6 @@ export function ChatWebView() {
           background: 'var(--color-bg-primary)',
         }}
         allow="clipboard-write"
-        sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
-        onLoad={() => setLoading(false)}
-        onError={() => { setLoading(false); setLoadError(true); }}
       />
     </div>
   );
