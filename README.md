@@ -1,49 +1,44 @@
 # 🦞 ClawBar
 
-macOS menu bar chat client for [OpenClaw](https://github.com/nicepkg/openclaw) — talk to your self-hosted lobster without installing Feishu, Discord, or Teams.
+macOS menu bar chat client and management dashboard for [OpenClaw](https://github.com/nicepkg/openclaw). One click in your menu bar pops up a floating window with native chat plus a full operator panel — sessions, approvals, agents, skills, cron jobs, usage, logs.
 
 ## Features
 
-- **Menu Bar Native** — Click the 🦞 icon in your macOS menu bar to open/close the chat window
-- **Beautiful Chat UI** — Markdown rendering, code syntax highlighting, copy button
-- **Flexible Window** — Resize, drag, pin (always-on-top)
-- **OpenClaw Integration** — Connects to your local OpenClaw instance via CLI
-- **Dark/Light Theme** — Follows system appearance or manual override
-- **Session Management** — Switch between chat sessions and agents
+- **Menu Bar Native** — 🦞 tray icon, click to toggle the popover window
+- **Two Chat Modes** — Compact (native WebSocket UI) or Classic (embedded OpenClaw Control UI iframe)
+- **Operator Panel** — Sidebar with 10 views: Overview, Chat, Approvals, Sessions, Usage, Cron, Agents, Skills, Logs, Settings
+- **Secure Auth** — Ed25519 device identity + token/password auth to the gateway
+- **Resize, Drag, Pin** — Frameless `popover` vibrancy window
+- **Light / Dark Theme** — Follows system or manual override
+- **Desktop Pet** — Optional floating 🦞 mascot window
 
 ## Quick Start
 
 ### Prerequisites
 
 - macOS 12+ (Monterey or later)
-- [OpenClaw](https://github.com/nicepkg/openclaw) installed and running locally
+- A reachable [OpenClaw](https://github.com/nicepkg/openclaw) gateway (default `http://localhost:18789`)
 - Node.js 20+
 
 ### Install & Run
 
 ```bash
-git clone https://github.com/user/clawbar.git
+git clone https://github.com/<you>/clawbar.git
 cd clawbar
 npm install
-npm run build
 npm run dev:electron
 ```
 
 ### Development
 
 ```bash
-# Start Vite dev server (renderer only)
-npm run dev
+npm run dev               # Vite dev server (renderer only, port 5173)
+npm run dev:electron      # Build electron main + launch app
+npm run build             # Production build (vite + tsc)
 
-# Build electron main process + launch app
-npm run dev:electron
-
-# Type check
+# Type checking
 npx tsc --noEmit                          # renderer
 npx tsc -p tsconfig.node.json --noEmit    # main process
-
-# Production build
-npm run build
 
 # Package as DMG
 npm run pack:mac:dmg:arm64    # Apple Silicon
@@ -52,44 +47,34 @@ npm run pack:mac:dmg:x64      # Intel
 
 ## Configuration
 
-On first launch, ClawBar will auto-detect the `openclaw` CLI in your PATH. You can customize the CLI path in Settings (⚙️).
+Open Settings (⚙️ in title bar) on first launch to point ClawBar at your gateway and pick an auth method.
 
-Settings are saved to `~/.clawbar/settings.json`.
+Settings persist to `~/.clawbar/settings.json`. Device identity (Ed25519 keypair) lives at `~/.clawbar/device-identity.json`.
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| CLI Path | `openclaw` | Path to the openclaw CLI executable |
-| Theme | System | `light`, `dark`, or `system` |
-| Hide on click outside | Off | Auto-hide window when clicking outside |
-| Font size | 13px | Chat text size |
+| Gateway URL | `http://localhost:18789` | OpenClaw gateway address |
+| Auth Mode | `none` | `none`, `token`, or `password` |
+| Chat Mode | `compact` | `compact` (native WS) or `classic` (iframe) |
+| Theme | `system` | `light`, `dark`, or `system` |
+| Hide on click outside | Off | Auto-hide window when focus moves elsewhere |
 
-## Architecture
+## Architecture (high level)
 
 ```
-Electron Main Process
-├── Tray Icon (menu bar)
-├── BrowserWindow (frameless, vibrancy)
-└── IPC Handlers
-    ├── openclaw CLI executor
-    ├── Session manager
-    └── Settings store
+Main process (electron/)
+├── Tray + BrowserWindow (frameless, vibrancy: popover)
+├── Settings IPC      (settings.json read/write)
+└── WS Bridge         (single WebSocket → IPC fan-out, Ed25519 auth)
 
-Renderer Process (React)
-├── TitleBar (drag, pin, settings)
-├── ChatPanel
-│   ├── MessageList (auto-scroll)
-│   ├── MessageBubble (Markdown + code)
-│   └── ChatInput (Enter/Shift+Enter)
-├── SessionSwitcher
-└── SettingsPanel
+Renderer (src/)
+├── TitleBar
+├── Sidebar (10 views)
+├── CompactChat → ChatView (native WS UI)
+└── ChatWebView (classic iframe embed)
 ```
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for full details.
-
-## Documentation
-
-- [Product Requirements](docs/PRD.md)
-- [Architecture](docs/ARCHITECTURE.md)
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for IPC channel definitions and the full system diagram.
 
 ## License
 

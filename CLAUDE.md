@@ -32,4 +32,4 @@ npm run pack:mac:dmg:arm64  # Package macOS DMG (Apple Silicon)
 - **Classic mode**: iframe loads `http://<gateway>:18789/` with CSP header stripping
 - **Compact mode**: Native WS chat via `ws:connect/send/status/history/chat-event/approval` IPC channels
 
-See `docs/ARCHITECTURE.md` for the full system diagram and `docs/PRD.md` for product requirements.
+See `docs/ARCHITECTURE.md` for the full system diagram, IPC channel table, and WebSocket bridge details.
