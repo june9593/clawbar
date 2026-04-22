@@ -32,6 +32,7 @@ const MOBILE_UA =
 export function WebChannel({ channel, isActive }: Props) {
   const webviewRef = useRef<HTMLElement | null>(null);
   const setIcon = useChannelStore((s) => s.setIcon);
+  const setActiveWebview = useChannelStore((s) => s.setActiveWebview);
 
   // `allowpopups` is a boolean in HTMLAttributes typing; set imperatively
   // (also runs in time because the webview hasn't navigated yet — Electron
@@ -41,6 +42,15 @@ export function WebChannel({ channel, isActive }: Props) {
     if (!el) return;
     el.setAttribute('allowpopups', '');
   }, []);
+
+  // Expose this webview to the TitleBar back / reload buttons while active.
+  useEffect(() => {
+    if (!isActive) return;
+    const el = webviewRef.current;
+    if (!el) return;
+    setActiveWebview(el);
+    return () => setActiveWebview(null);
+  }, [isActive, setActiveWebview]);
 
   // Capture favicon updates for user-added channels.
   useEffect(() => {

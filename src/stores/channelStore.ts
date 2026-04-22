@@ -11,6 +11,11 @@ interface ChannelState {
   openclawSidebarOpen: boolean;
   setOpenclawSidebarOpen: (v: boolean) => void;
 
+  // Pointer to the currently active web channel's <webview> element so
+  // the TitleBar Back / Refresh buttons can drive it.
+  activeWebview: HTMLElement | null;
+  setActiveWebview: (el: HTMLElement | null) => void;
+
   // Hydrate from settings store (call after settings load)
   syncFromSettings: () => void;
 
@@ -57,6 +62,8 @@ export const useChannelStore = create<ChannelState>((set, get) => ({
   channels: [],
   activeChannelId: 'openclaw',
   openclawSidebarOpen: false,
+  activeWebview: null,
+  setActiveWebview: (el) => set({ activeWebview: el }),
 
   setOpenclawSidebarOpen: (v) => set({ openclawSidebarOpen: v }),
 
