@@ -10,6 +10,8 @@ export function ChannelDock() {
   const channels = useChannelStore((s) => s.channels);
   const activeId = useChannelStore((s) => s.activeChannelId);
   const setActive = useChannelStore((s) => s.setActive);
+  const sidebarOpen = useChannelStore((s) => s.openclawSidebarOpen);
+  const setSidebarOpen = useChannelStore((s) => s.setOpenclawSidebarOpen);
   const [adding, setAdding] = useState(false);
   const [ctx, setCtx] = useState<{ channel: Channel; x: number; y: number } | null>(null);
   const addBtnRef = useRef<HTMLButtonElement>(null);
@@ -41,6 +43,8 @@ export function ChannelDock() {
         padding: '8px 0',
         borderRight: '0.5px solid var(--color-border-primary)',
         background: 'var(--color-bg-secondary)',
+        position: 'relative',
+        zIndex: 95,  // above OpenClaw sidebar backdrop (z=90) so dock stays clickable
       }}
     >
       <div
@@ -58,7 +62,19 @@ export function ChannelDock() {
             key={c.id}
             channel={c}
             active={c.id === activeId}
-            onClick={() => setActive(c.id)}
+            onClick={() => {
+              if (c.kind === 'openclaw') {
+                if (activeId === 'openclaw') {
+                  setSidebarOpen(!sidebarOpen);
+                } else {
+                  setActive('openclaw');
+                  setSidebarOpen(true);
+                }
+              } else {
+                setActive(c.id);
+                if (sidebarOpen) setSidebarOpen(false);
+              }
+            }}
             onContextMenu={(e) => {
               e.preventDefault();
               setCtx({ channel: c, x: e.clientX, y: e.clientY });

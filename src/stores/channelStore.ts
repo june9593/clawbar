@@ -5,6 +5,11 @@ import { useSettingsStore } from './settingsStore';
 interface ChannelState {
   channels: Channel[];
   activeChannelId: string;
+  // OpenClaw's internal sidebar (Overview / Approvals / Sessions / ...).
+  // Toggled by clicking the OpenClaw icon in the dock when OpenClaw is
+  // already the active channel.
+  openclawSidebarOpen: boolean;
+  setOpenclawSidebarOpen: (v: boolean) => void;
 
   // Hydrate from settings store (call after settings load)
   syncFromSettings: () => void;
@@ -51,6 +56,9 @@ function hostFromUrl(url: string): string {
 export const useChannelStore = create<ChannelState>((set, get) => ({
   channels: [],
   activeChannelId: 'openclaw',
+  openclawSidebarOpen: false,
+
+  setOpenclawSidebarOpen: (v) => set({ openclawSidebarOpen: v }),
 
   syncFromSettings: () => {
     const s = useSettingsStore.getState();

@@ -32,6 +32,12 @@ export function WebChannel({ channel, isActive }: Props) {
     const el = webviewRef.current;
     if (!el) return;
     el.setAttribute('allowpopups', '');
+    // Pretend to be a mobile browser so IM web apps return their phone
+    // layout — much easier to read inside a narrow menu-bar window.
+    el.setAttribute(
+      'useragent',
+      'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1',
+    );
   }, []);
 
   // Capture favicon updates for user-added channels.

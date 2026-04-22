@@ -77,8 +77,8 @@ function loadWindowBounds(): Electron.Rectangle | null {
 function createWindow() {
   const savedBounds = loadWindowBounds();
   mainWindow = new BrowserWindow({
-    width: savedBounds?.width ?? 440,
-    height: savedBounds?.height ?? 560,
+    width: savedBounds?.width ?? 390,
+    height: savedBounds?.height ?? 720,
     minWidth: 320,
     minHeight: 400,
     maxWidth: 800,
