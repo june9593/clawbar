@@ -104,20 +104,20 @@ export function TitleBar({ onToggleSidebar }: TitleBarProps) {
         }}>
           ClawBar
         </div>
-      </div>
-
-      {/* Right buttons */}
-      <div className="titlebar-no-drag" style={{ display: 'flex', alignItems: 'center', gap: '1px', height: '44px' }}>
         {isWebChannel && (
-          <>
+          <div className="titlebar-no-drag" style={{ display: 'flex', alignItems: 'center', gap: '1px', marginLeft: 4 }}>
             <TitleButton onClick={goBack} title="后退">
               <ArrowLeft size={14} strokeWidth={1.75} />
             </TitleButton>
             <TitleButton onClick={reloadWeb} title="刷新">
               <RotateCw size={14} strokeWidth={1.75} />
             </TitleButton>
-          </>
+          </div>
         )}
+      </div>
+
+      {/* Right buttons */}
+      <div className="titlebar-no-drag" style={{ display: 'flex', alignItems: 'center', gap: '1px', height: '44px' }}>
         {chatMode === 'classic' && view === 'chat' && !isWebChannel && (
           <TitleButton
             onClick={reloadWebView}
