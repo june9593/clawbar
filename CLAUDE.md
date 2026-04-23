@@ -1,6 +1,8 @@
 # ClawBar
 
-macOS menu bar **multi-IM hub** — a 48 px channel dock on the left switches between OpenClaw (native WebSocket chat or classic iframe + 10-view operator panel) and any number of web-based IM channels (Telegram, Discord, Feishu, Lark, or user-added URLs). Each web channel runs in its own Electron `<webview>` with a persistent partition so logins survive restarts. Web channels use a mobile UA so IM apps render their phone layouts in the narrow popover window.
+A macOS **menu-bar app for OpenClaw**. Your OpenClaw agent reaches you through many channels (its native web chat, IM bots in Telegram / Discord / Feishu / Lark, custom integrations); ClawBar puts every one of those channels in a single 48 px channel bar inside the popover. Bar in a bar — both the channel bar inside the app and the macOS menu bar housing the app.
+
+The OpenClaw channel itself supports two UI modes (native WebSocket chat or classic iframe of the gateway's web UI) and exposes a 10-view operator panel (Overview / Approvals / Sessions / Usage / Cron / Agents / Skills / Logs / Settings) by re-clicking its icon. The other channels are Electron `<webview>`s with a persistent partition + iPhone user-agent so IM apps render their phone layouts in the narrow popover.
 
 ## Commands
 

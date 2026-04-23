@@ -1,10 +1,10 @@
 # ClawBar — Architecture
 
-> 版本: v2.1 — 2026-04-22
+> 版本: v2.2 — 2026-04-23
 
 ## 1. Overview
 
-ClawBar is a frameless macOS menu bar Electron app with a left-edge **channel dock**. The first channel is OpenClaw — a self-hosted [OpenClaw](https://github.com/nicepkg/openclaw) gateway accessed either via native WebSocket UI (compact mode) or via embedded iframe (classic mode). Additional channels host arbitrary IM web apps (Telegram, Discord, Feishu, Lark, plus user-added URLs) inside Electron `<webview>` tags with persistent partitions.
+ClawBar is a frameless macOS menu-bar Electron app **for OpenClaw**. The user's OpenClaw agent is reachable through several **channels** — its own web chat, IM bots (Telegram / Discord / Feishu / Lark), custom integrations — and ClawBar collects every one of those channels into a 48 px channel bar on the left edge of the popover. The first channel is OpenClaw's native WebSocket UI (or, alternatively, an embedded iframe of the gateway's own web client); the rest are Electron `<webview>` tags with persistent partitions.
 
 ```
 ┌──────────────────────────────────────────────────────────┐
@@ -203,11 +203,11 @@ Frameless `BrowserWindow` with `vibrancy: 'popover'`. Position rules:
 
 ## 8. Channels
 
-The renderer shell is a **channel dock** (`ChannelDock`, 48 px wide, left edge) plus a **channel host** (`ChannelHost`, fills the rest). Each entry in `settings.channels` becomes either an `OpenClawChannel` (the existing compact / classic OpenClaw UI) or a `WebChannel` (an Electron `<webview>` with `partition="persist:channel-<id>"` and a mobile iPhone user-agent so IM web apps render their phone layouts). All enabled channels mount once and stay mounted; the inactive ones are stacked offscreen with `position:absolute + visibility:hidden + zIndex:0` so Electron keeps painting them — `display:none` would suspend the webview's compositor and make channel switches look like the page is "still loading".
+A **channel** is any place the user's OpenClaw agent talks to them — its own web chat, an IM bot (Telegram / Discord / Feishu / Lark), or a custom integration. The renderer shell is a **channel bar** (`ChannelDock`, 48 px wide, left edge) plus a **channel host** (`ChannelHost`, fills the rest). Each entry in `settings.channels` becomes either an `OpenClawChannel` (the existing compact / classic OpenClaw UI) or a `WebChannel` (an Electron `<webview>` with `partition="persist:channel-<id>"` and a mobile iPhone user-agent so IM web apps render their phone layouts). All enabled channels mount once and stay mounted; the inactive ones are stacked offscreen with `position:absolute + visibility:hidden + zIndex:0` so Electron keeps painting them — `display:none` would suspend the webview's compositor and make channel switches look like the page is "still loading".
 
-The `+` button at the dock's bottom opens `AddChannelMenu` — a popover (rendered via React Portal so it isn't clipped by the dock) that lets users re-enable any hidden built-in (Telegram / Discord / Feishu / Lark) or paste a custom URL. Right-clicking any channel opens `ChannelContextMenu` for rename, change icon, move up/down, hide (built-in only), or delete (custom only). OpenClaw is always at index 0 and cannot be removed; user-added channels' favicons are auto-captured via the `<webview>`'s `page-favicon-updated` event.
+The `+` button at the bar's bottom opens `AddChannelMenu` — a popover (rendered via React Portal so it isn't clipped by the bar) that lets users re-enable any hidden built-in (Telegram / Discord / Feishu / Lark) or paste a custom URL where their agent is reachable. Right-clicking any channel opens `ChannelContextMenu` for rename, change icon, move up/down, hide (built-in only), or delete (custom only). OpenClaw is always at index 0 and cannot be removed; user-added channels' favicons are auto-captured via the `<webview>`'s `page-favicon-updated` event.
 
-Clicking the OpenClaw dock icon while OpenClaw is the active channel toggles its internal operator sidebar (Overview / Approvals / Sessions / Usage / Cron / Agents / Skills / Logs / Settings). The sidebar panel + backdrop start at `left: 48 px` so the channel dock stays visible and clickable. When a web channel is active the TitleBar gains Back / Reload buttons that drive the `<webview>` via `goBack()` / `reload()`; the webview element is exposed through `channelStore.activeWebview`.
+Clicking the OpenClaw channel icon while OpenClaw is the active channel toggles its internal **operator sidebar** (Overview / Approvals / Sessions / Usage / Cron / Agents / Skills / Logs / Settings) — this surface is for managing the OpenClaw gateway itself, not chat. The sidebar panel + backdrop start at `left: 48 px` so the channel bar stays visible and clickable. When a web channel is active the TitleBar gains Back / Reload buttons that drive the `<webview>` via `goBack()` / `reload()`; the webview element is exposed through `channelStore.activeWebview`.
 
 ## 9. Pet window
 

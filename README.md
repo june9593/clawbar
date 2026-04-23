@@ -1,15 +1,16 @@
 # 🦞 ClawBar
 
-A macOS menu-bar **multi-IM hub** that puts your [OpenClaw](https://github.com/nicepkg/openclaw) agent, Telegram, Discord, Feishu, Lark — and any other web app — one click away from the menu bar. No Dock clutter, no app-switcher dance.
+A macOS menu-bar app for [OpenClaw](https://github.com/nicepkg/openclaw). Your agent reaches you through many channels — Telegram, Discord, Feishu, Lark, its own web chat, custom integrations — and ClawBar puts every one of those channels in a single bar, sitting in the macOS menu bar. **A bar in a bar.**
 
 ## Features
 
-- **Channel Dock** — A 48 px sidebar lists OpenClaw plus any web channels you add. Each channel runs in its own Electron `<webview>` with a persistent partition, so logins survive across launches.
-- **Built-in IM channels** — Telegram, Discord, Feishu, Lark out of the box. Add any URL via the `+` button.
+- **One bar, every OpenClaw channel** — A 48 px sidebar lists every way you talk to your OpenClaw: native web chat, Telegram bot, Discord bot, Feishu / Lark, and any other URL you've wired your agent into.
+- **Built-in IM channels** — Telegram, Discord, Feishu, Lark out of the box. Click `+` to add wherever else your bot lives.
+- **Operator panel for OpenClaw** — Click the lobster again to open a sidebar with 10 views: Overview, Chat, Approvals, Sessions, Usage, Cron, Agents, Skills, Logs, Settings.
+- **Persistent logins** — Each channel runs in its own Electron `<webview>` partition; scan the QR or sign in once and you're set.
 - **Mobile-optimised** — Web channels report a phone user-agent so they render their compact mobile layouts inside the narrow menu-bar window.
-- **OpenClaw operator panel** — Click the OpenClaw icon to open a sidebar with 10 views: Overview, Chat, Approvals, Sessions, Usage, Cron, Agents, Skills, Logs, Settings.
 - **Browser-style controls** — Back / Reload buttons in the title bar when a web channel is active.
-- **Secure WebSocket auth** — Ed25519 device identity for talking to OpenClaw. Tokens never leave the main process.
+- **Secure WebSocket auth** — Ed25519 device identity for talking to the OpenClaw gateway. Tokens never leave the main process.
 - **Frameless popover** — vibrancy background, resizable, draggable, optional always-on-top.
 - **Optional desktop pet** — A draggable lobster mascot that doubles as a click-to-toggle shortcut. Hide / show from the tray menu, persisted across launches.
 - **Light / dark theme** — follows macOS or override per app.
@@ -61,13 +62,15 @@ npm run pack:mac:dmg:arm64
 
 ## Channels
 
+A **channel** in ClawBar is any place your OpenClaw agent talks to you — its native web chat, an IM bot, or a custom integration. The channel bar (the 48 px sidebar) lists every one of them.
+
 | Channel | Notes |
 |---|---|
 | **OpenClaw** | The default first channel. Cannot be deleted. Click its icon to toggle the operator sidebar. |
-| **Telegram** | Loads `web.telegram.org`. Scan QR or use phone number. |
-| **Discord** | Loads `discord.com/app`. Login with email/password or QR. |
+| **Telegram** | Loads `web.telegram.org`. Where your OpenClaw Telegram bot lives. |
+| **Discord** | Loads `discord.com/app`. Where your OpenClaw Discord bot lives. |
 | **飞书 / Lark** | Routes through the official `accounts.*` login flow, redirects to messages after auth. |
-| **Custom** | Click `+` → paste any URL. Favicon and hostname auto-populate. Right-click → Rename / Change icon / Move / Delete. |
+| **Custom** | Click `+` → paste any URL where you've wired up your OpenClaw integration. Favicon and hostname auto-populate. |
 
 Each channel keeps its own cookies and localStorage in `persist:channel-<id>`.
 
