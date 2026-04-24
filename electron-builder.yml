@@ -10,6 +10,7 @@ mac:
         - arm64
   icon: resources/icon.png
   darkModeSupport: true
+  artifactName: ${productName}-${version}-mac-${arch}.${ext}
 
 win:
   target:
@@ -21,7 +22,7 @@ win:
         - x64
   icon: resources/icon.png
   # Not code-signed — users will see SmartScreen warning on first launch.
-  artifactName: ${productName}-${version}-${arch}.${ext}
+  artifactName: ${productName}-${version}-win-${arch}.${ext}
 
 nsis:
   oneClick: false
@@ -32,7 +33,7 @@ nsis:
   shortcutName: ClawBar
 
 portable:
-  artifactName: ${productName}-${version}-portable-${arch}.${ext}
+  artifactName: ${productName}-${version}-win-portable-${arch}.${ext}
 
 dmg:
   title: ClawBar ${version}

@@ -29,6 +29,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Sync package.json version from tag
+        shell: bash
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          if [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            VERSION="${TAG#v}"
+            echo "Syncing package.json to version $VERSION"
+            npm version "$VERSION" --no-git-tag-version --allow-same-version
+          else
+            echo "No version tag detected ($TAG); using package.json version as-is."
+          fi
+
       - name: Build renderer + main process
         run: npm run build
 
@@ -67,6 +79,18 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Sync package.json version from tag
+        shell: bash
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          if [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            VERSION="${TAG#v}"
+            echo "Syncing package.json to version $VERSION"
+            npm version "$VERSION" --no-git-tag-version --allow-same-version
+          else
+            echo "No version tag detected ($TAG); using package.json version as-is."
+          fi
 
       - name: Build renderer + main process
         run: npm run build
@@ -140,3 +164,63 @@ jobs:
           files: |
             release-assets/*.dmg
             release-assets/*.exe
+
+  update-docs:
+    name: Update docs + README with new version
+    needs: release
+    if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.tag != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+        with:
+          ref: main
+          # Use default GITHUB_TOKEN; `contents: write` is already granted above.
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Rewrite version strings
+        shell: bash
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            echo "Tag $TAG is not a semver tag; skipping docs update."
+            exit 0
+          fi
+          VERSION="${TAG#v}"
+          echo "Updating docs + README to version $VERSION ($TAG)"
+
+          FILES=(docs/index.html README.md)
+          for f in "${FILES[@]}"; do
+            # ClawBar-X.Y.Z-<suffix>  →  ClawBar-<VERSION>-<suffix>
+            sed -i -E "s|ClawBar-[0-9]+\.[0-9]+\.[0-9]+-|ClawBar-${VERSION}-|g" "$f"
+            # releases/download/vX.Y.Z/  →  releases/download/v<VERSION>/
+            sed -i -E "s|releases/download/v[0-9]+\.[0-9]+\.[0-9]+/|releases/download/v${VERSION}/|g" "$f"
+            # "v0.2.3 · arm64" eyebrow / meta labels (only lines containing <span class="meta">)
+            sed -i -E "/<span class=\"meta\">/ s|v[0-9]+\.[0-9]+\.[0-9]+|v${VERSION}|g" "$f"
+            # Footer colophon "Last updated v0.2.3"
+            sed -i -E "s|Last updated v[0-9]+\.[0-9]+\.[0-9]+|Last updated v${VERSION}|g" "$f"
+          done
+
+          # Also bump package.json so HEAD of main stays consistent with the last release.
+          node -e "const p=require('./package.json');p.version='${VERSION}';require('fs').writeFileSync('package.json',JSON.stringify(p,null,2)+'\n');"
+
+      - name: Commit & push
+        shell: bash
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            echo "Skipping commit (non-semver tag)."
+            exit 0
+          fi
+          VERSION="${TAG#v}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/index.html README.md package.json
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "docs: bump download links to v${VERSION} [skip ci]"
+            git push origin main
+          fi
