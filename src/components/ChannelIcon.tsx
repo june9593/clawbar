@@ -16,6 +16,22 @@ export function ChannelIcon({ channel, active, onClick, onContextMenu }: Props) 
     if (channel.kind === 'openclaw') {
       return <LobsterIcon size={26} />;
     }
+    if (channel.kind === 'claude') {
+      return (
+        <div style={{
+          width: 22, height: 22, borderRadius: 5,
+          background: channel.iconColor,
+          color: 'white',
+          fontFamily: 'var(--font-display)',
+          fontWeight: 600, fontSize: 13,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          lineHeight: 1,
+        }}>
+          {channel.iconLetter}
+        </div>
+      );
+    }
+    // kind === 'web'
     const icon = channel.icon;
     if (icon.startsWith('http://') || icon.startsWith('https://') || icon.startsWith('data:')) {
       return <img src={icon} alt="" style={{ width: 22, height: 22, borderRadius: 4 }} />;
