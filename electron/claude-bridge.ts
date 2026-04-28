@@ -98,10 +98,140 @@ function makeCanUseTool(_s: ActiveSession): CanUseTool {
   };
 }
 
-/** Drain the SDK Query iterator and fan out events to the renderer.
- *  Filled in by Task 8. */
-async function runSession(_s: ActiveSession, _q: Query): Promise<void> {
-  // Stub: real implementation in Task 8.
+type AnyMsg = Record<string, unknown> & { type: string };
+
+interface ContentBlock {
+  type: string;
+  text?: string;
+  thinking?: string;
+  id?: string;
+  name?: string;
+  input?: unknown;
+  // for tool_result blocks (user messages):
+  tool_use_id?: string;
+  content?: unknown;
+  is_error?: boolean;
+}
+
+/** Track tool-call start times so tool-result can compute duration. */
+function makeToolStartTracker() {
+  const starts = new Map<string, number>();
+  return {
+    record(id: string) { starts.set(id, Date.now()); },
+    take(id: string): number {
+      const t = starts.get(id);
+      starts.delete(id);
+      return t ?? Date.now();
+    },
+  };
+}
+
+async function runSession(s: ActiveSession, q: Query): Promise<void> {
+  const tracker = makeToolStartTracker();
+  try {
+    for await (const raw of q as AsyncIterable<AnyMsg>) {
+      const msg = raw as AnyMsg;
+      bumpActivity(s);
+
+      // ── system init: capture sessionId for future resume ──────────────
+      if (msg.type === 'system' && (msg as AnyMsg).subtype === 'init') {
+        const newId = msg.session_id as string | undefined;
+        if (newId) {
+          s.sessionId = newId;
+          emit(s.channelId, { kind: 'session-started', sessionId: newId });
+        }
+        continue;
+      }
+
+      // ── stream_event: deltas (text + thinking) ────────────────────────
+      if (msg.type === 'stream_event') {
+        const inner = msg.event as { type?: string; delta?: { type?: string; text?: string; thinking?: string } } | undefined;
+        if (!inner) continue;
+        if (inner.type === 'content_block_delta') {
+          const d = inner.delta;
+          if (d?.type === 'text_delta' && typeof d.text === 'string' && d.text.length > 0) {
+            emit(s.channelId, {
+              kind: 'message-delta',
+              messageId: (msg.parent_tool_use_id as string | null) ?? 'live',
+              text: d.text,
+            });
+          } else if (d?.type === 'thinking_delta' && typeof d.thinking === 'string' && d.thinking.length > 0) {
+            emit(s.channelId, {
+              kind: 'thinking-delta',
+              messageId: (msg.parent_tool_use_id as string | null) ?? 'live',
+              text: d.thinking,
+            });
+          }
+        }
+        continue;
+      }
+
+      // ── assistant: complete blocks (text + tool_use) ──────────────────
+      if (msg.type === 'assistant') {
+        const m = msg.message as { id?: string; content?: ContentBlock[] } | undefined;
+        if (!m || !Array.isArray(m.content)) continue;
+        for (const block of m.content) {
+          if (block.type === 'tool_use' && typeof block.id === 'string') {
+            tracker.record(block.id);
+            emit(s.channelId, {
+              kind: 'tool-call',
+              callId: block.id,
+              tool: block.name ?? 'unknown',
+              input: block.input,
+              startedAt: Date.now(),
+            });
+          }
+          // text blocks are already streamed via stream_event deltas; the
+          // final assistant message arrives at result-time as a single
+          // consolidation. We don't double-emit here — useClaudeSession
+          // commits the streaming buffer on `turn-end`.
+        }
+        continue;
+      }
+
+      // ── user: tool_result blocks ──────────────────────────────────────
+      if (msg.type === 'user') {
+        const m = msg.message as { content?: ContentBlock[] } | undefined;
+        if (!m || !Array.isArray(m.content)) continue;
+        for (const block of m.content) {
+          if (block.type === 'tool_result' && typeof block.tool_use_id === 'string') {
+            const startedAt = tracker.take(block.tool_use_id);
+            emit(s.channelId, {
+              kind: 'tool-result',
+              callId: block.tool_use_id,
+              output: block.content,
+              isError: block.is_error === true,
+              durationMs: Date.now() - startedAt,
+            });
+          }
+        }
+        continue;
+      }
+
+      // ── result: turn finished ─────────────────────────────────────────
+      if (msg.type === 'result') {
+        const usage = msg.usage as { input_tokens?: number; output_tokens?: number } | undefined;
+        emit(s.channelId, {
+          kind: 'turn-end',
+          messageId: 'live',
+          usage: {
+            input: usage?.input_tokens ?? 0,
+            output: usage?.output_tokens ?? 0,
+          },
+        });
+        continue;
+      }
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    // SDK throws AbortError when the user aborted — surface as `aborted`,
+    // not as a hard error.
+    if (message.includes('Abort') || message.includes('abort')) {
+      emit(s.channelId, { kind: 'aborted' });
+    } else {
+      emit(s.channelId, { kind: 'error', message, recoverable: true });
+    }
+  }
 }
 
 /** Open a new SDK Query for this session, resuming if we have a sessionId. */
