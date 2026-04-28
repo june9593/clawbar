@@ -96,8 +96,82 @@ function destroySession(channelId: string) {
 }
 
 /** Build the `canUseTool` callback for this session (filled in by Task 9). */
-function makeCanUseTool(_s: ActiveSession): CanUseTool {
-  return async (_toolName, input, _options) => {
+function makeCanUseTool(s: ActiveSession): CanUseTool {
+  return async (toolName, input, options) => {
+    const signal = (options as { signal?: AbortSignal }).signal;
+
+    // ── AskUserQuestion: surface to UI, wait for user-picked answers ──
+    if (toolName === 'AskUserQuestion') {
+      const requestId = randomUUID();
+      const questions = ((input.questions ?? []) as AskQuestion[]);
+      emit(s.channelId, { kind: 'ask-question', requestId, questions });
+
+      const answers = await new Promise<string[][]>((resolve, reject) => {
+        s.pendingAsks.set(requestId, { resolve });
+        if (signal) {
+          if (signal.aborted) {
+            s.pendingAsks.delete(requestId);
+            reject(new Error('Aborted'));
+            return;
+          }
+          signal.addEventListener('abort', () => {
+            if (s.pendingAsks.has(requestId)) {
+              s.pendingAsks.delete(requestId);
+              reject(new Error('Aborted'));
+            }
+          }, { once: true });
+        }
+      }).catch(() => null);
+
+      if (!answers) {
+        return { behavior: 'deny', message: 'Aborted while awaiting AskUserQuestion answers' };
+      }
+
+      // SDK expects per-question answer keyed by the question's header.
+      const answerMap: Record<string, string> = {};
+      questions.forEach((q, i) => {
+        const picked = answers[i] ?? [];
+        answerMap[q.header] = picked.join(', ');
+      });
+
+      return {
+        behavior: 'allow',
+        updatedInput: { questions, answers: answerMap } as Record<string, unknown>,
+      };
+    }
+
+    // ── Already allowed for the rest of this in-memory session ────────
+    if (s.allowedForSession.has(toolName)) {
+      return { behavior: 'allow', updatedInput: input as Record<string, unknown> };
+    }
+
+    // ── Tool approval: surface to UI, wait for user decision ──────────
+    const requestId = randomUUID();
+    emit(s.channelId, { kind: 'approval-request', requestId, tool: toolName, input });
+
+    const decision = await new Promise<ApprovalDecision>((resolve, reject) => {
+      s.pendingApprovals.set(requestId, { resolve });
+      if (signal) {
+        if (signal.aborted) {
+          s.pendingApprovals.delete(requestId);
+          reject(new Error('Aborted'));
+          return;
+        }
+        signal.addEventListener('abort', () => {
+          if (s.pendingApprovals.has(requestId)) {
+            s.pendingApprovals.delete(requestId);
+            reject(new Error('Aborted'));
+          }
+        }, { once: true });
+      }
+    }).catch(() => 'deny' as const);
+
+    if (decision === 'deny') {
+      return { behavior: 'deny', message: 'Tool call denied by user' };
+    }
+    if (decision === 'allow-session') {
+      s.allowedForSession.add(toolName);
+    }
     return { behavior: 'allow', updatedInput: input as Record<string, unknown> };
   };
 }
