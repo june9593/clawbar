@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useChannelStore } from '../stores/channelStore';
 import type { WebChannelDef } from '../types';
+import { ClaudeWizard } from './add-channel/ClaudeWizard';
 
 interface Props {
   x: number;
@@ -16,6 +17,7 @@ export function AddChannelMenu({ x, y, onClose }: Props) {
   const addCustom = useChannelStore((s) => s.addCustom);
   const [url, setUrl] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [showClaude, setShowClaude] = useState(false);
 
   const builtinWeb = channels.filter((c): c is WebChannelDef => c.kind === 'web' && c.builtin);
 
@@ -80,6 +82,25 @@ export function AddChannelMenu({ x, y, onClose }: Props) {
       ))}
 
       <div style={{ borderTop: '0.5px solid var(--color-border-primary)', margin: '10px 0 6px' }} />
+      <button
+        onClick={() => setShowClaude(true)}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          width: '100%', padding: '6px 8px', borderRadius: 6,
+          border: 'none', background: 'transparent', cursor: 'pointer',
+          fontSize: 13, color: 'var(--color-text-primary)', textAlign: 'left',
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--color-surface-hover)')}
+        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="#cc785c" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M12 2 L13.2 9 L19.5 5.5 L16 11.8 L23 12 L16 12.2 L19.5 18.5 L13.2 15 L12 22 L10.8 15 L4.5 18.5 L8 12.2 L1 12 L8 11.8 L4.5 5.5 L10.8 9 Z" />
+        </svg>
+        <span style={{ flex: 1 }}>Claude Code session</span>
+        <span style={{ color: 'var(--color-text-tertiary)' }}>›</span>
+      </button>
+
+      <div style={{ borderTop: '0.5px solid var(--color-border-primary)', margin: '10px 0 6px' }} />
       <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>
         Custom
       </div>
@@ -125,6 +146,13 @@ export function AddChannelMenu({ x, y, onClose }: Props) {
         </button>
       </div>
     </div>
+    {showClaude && (
+      <ClaudeWizard
+        x={x}
+        y={y}
+        onClose={() => { setShowClaude(false); onClose(); }}
+      />
+    )}
     </>,
     document.body,
   );

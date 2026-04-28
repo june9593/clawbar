@@ -23,6 +23,9 @@ export function TitleBar({ onToggleSidebar }: TitleBarProps) {
   const chatMode = useSettingsStore((s) => s.chatMode);
   const reloadWebView = useWebViewStore((s) => s.reload);
   const activeChannelId = useChannelStore((s) => s.activeChannelId);
+  const activeChannel = useChannelStore((s) =>
+    s.channels.find((c) => c.id === s.activeChannelId)
+  );
   const activeWebview = useChannelStore((s) => s.activeWebview) as WebviewEl | null;
   const [pinned, setPinned] = useState(false);
 
@@ -101,8 +104,29 @@ export function TitleBar({ onToggleSidebar }: TitleBarProps) {
           height: '44px',
           display: 'flex',
           alignItems: 'center',
+          gap: 6,
+          minWidth: 0,
         }}>
-          ClawBar
+          <span>ClawBar</span>
+          {activeChannel?.kind === 'claude' && (
+            <span
+              title={activeChannel.projectDir}
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: '11px',
+                color: 'var(--color-text-tertiary)',
+                fontWeight: 400,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                direction: 'rtl',
+                textAlign: 'left',
+                maxWidth: 220,
+              }}
+            >
+              {activeChannel.projectDir}
+            </span>
+          )}
         </div>
         {isWebChannel && (
           <div className="titlebar-no-drag" style={{ display: 'flex', alignItems: 'center', gap: '1px', marginLeft: 4 }}>

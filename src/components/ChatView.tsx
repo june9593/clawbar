@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { ArrowUp, ChevronDown } from 'lucide-react';
+import { ArrowUp, ChevronDown, Square } from 'lucide-react';
 import { ChatHistory } from './ChatHistory';
 import { ApprovalCard, type ApprovalRequest, type ApprovalDecision } from './ApprovalCard';
 import { LobsterIcon } from './LobsterIcon';
@@ -24,6 +24,27 @@ interface ChatViewProps {
   deleteSession: (key: string) => void;
   pendingApprovals: ApprovalRequest[];
   resolveApproval: (id: string, decision: ApprovalDecision) => void;
+  /** Optional override for the assistant avatar; if set, the OpenClaw
+   *  agent-identity fetch is skipped and this glyph is rendered instead.
+   *  Used by the Claude channel to show a Claude sparkle rather than 🦞. */
+  assistantAvatar?: React.ReactNode;
+  /** Optional override for the empty-state badge; mirrors `assistantAvatar`. */
+  emptyStateGlyph?: React.ReactNode;
+  /** When provided AND `isTyping` is true, the send button becomes a stop
+   *  button that calls this handler instead of sending. */
+  onInterrupt?: () => void;
+  /** When set, typing `/` at the start of the input shows an autocomplete
+   *  popover with these commands. Used by the Claude channel to surface
+   *  Claude Code's built-in slash commands. */
+  slashCommands?: SlashCommand[];
+  /** Optional inline status pill rendered just above the typing indicator
+   *  (e.g. "Thinking…" or "Running Bash"). Used by Claude channel. */
+  activity?: { kind: 'thinking' | 'tool'; label: string } | null;
+}
+
+export interface SlashCommand {
+  name: string;       // e.g. "/context"
+  description: string;
 }
 
 function formatTime(ts: string): string {
@@ -36,8 +57,51 @@ export function ChatView({
   messages, isConnected, isTyping, sendMessage,
   sessions, currentSessionKey, switchSession, createSession, deleteSession,
   pendingApprovals, resolveApproval,
+  assistantAvatar, emptyStateGlyph, onInterrupt,
+  slashCommands, activity,
 }: ChatViewProps) {
   const [input, setInput] = useState('');
+  const [slashIdx, setSlashIdx] = useState(0);
+
+  // Slash autocomplete: only triggers when channel provided commands AND
+  // the input starts with `/` and contains no whitespace yet. Matching is
+  // fuzzy: a query is a *subsequence* of the command name in order, so
+  // typing "power" matches "/superpower" or "/superpowers:writing-plans".
+  const slashMatches = (() => {
+    if (!slashCommands || slashCommands.length === 0) return [];
+    if (!input.startsWith('/')) return [];
+    if (/\s/.test(input)) return [];
+    const q = input.slice(1).toLowerCase();
+    if (q.length === 0) return slashCommands.slice(0, 12);
+    const scored = slashCommands
+      .map((c) => {
+        const name = c.name.slice(1).toLowerCase();
+        // Score: -∞ if not a subsequence; otherwise lower (better) for tighter
+        // matches (later last-match position penalised; prefix bonus).
+        let i = 0, j = 0, lastMatch = -1;
+        while (i < q.length && j < name.length) {
+          if (q[i] === name[j]) {
+            if (lastMatch === -1) lastMatch = j;
+            i++;
+          }
+          j++;
+        }
+        if (i < q.length) return { c, score: -1 };
+        const prefixBonus = name.startsWith(q) ? -1000 : 0;
+        return { c, score: prefixBonus + lastMatch + name.length * 0.1 };
+      })
+      .filter((x) => x.score >= 0 || x.score < -500)
+      .sort((a, b) => a.score - b.score)
+      .slice(0, 12)
+      .map((x) => x.c);
+    return scored;
+  })();
+  const slashOpen = slashMatches.length > 0;
+
+  // Reset highlighted index when the match list changes shape.
+  useEffect(() => {
+    setSlashIdx(0);
+  }, [slashMatches.length, input.startsWith('/')]);
   const [agentEmoji, setAgentEmoji] = useState<string>('🦞');
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -61,6 +125,9 @@ export function ChatView({
 
   // Fetch agent identity for avatar
   useEffect(() => {
+    // If the embedding channel supplied its own avatar (e.g. Claude), skip the
+    // OpenClaw-specific agent-identity WebSocket fetch entirely.
+    if (assistantAvatar !== undefined) return;
     const api = window.electronAPI?.ws;
     if (!api || !isConnected) return;
 
@@ -84,7 +151,7 @@ export function ChatView({
 
     const timer = setTimeout(unsub, 5000);
     return () => { clearTimeout(timer); unsub(); };
-  }, [isConnected, currentSessionKey]);
+  }, [isConnected, currentSessionKey, assistantAvatar]);
 
   const adjustTextarea = useCallback(() => {
     const ta = textareaRef.current;
@@ -104,6 +171,29 @@ export function ChatView({
   }, [input, sendMessage]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (slashOpen) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSlashIdx((i) => Math.min(i + 1, slashMatches.length - 1));
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSlashIdx((i) => Math.max(i - 1, 0));
+        return;
+      }
+      if (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey)) {
+        e.preventDefault();
+        const picked = slashMatches[slashIdx];
+        if (picked) setInput(picked.name);
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setInput('');
+        return;
+      }
+    }
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -138,13 +228,35 @@ export function ChatView({
         }}
       >
         {isEmpty ? (
-          <EmptyState />
+          <EmptyState glyph={emptyStateGlyph} />
         ) : (
           <>
             {messages.map((msg) => (
-              <MessageBubble key={msg.id} message={msg} agentEmoji={agentEmoji} />
+              <MessageBubble key={msg.id} message={msg} agentEmoji={agentEmoji} avatarOverride={assistantAvatar} />
             ))}
-            {isTyping && <TypingIndicator />}
+            {activity && (
+              <div style={{
+                display: 'inline-flex', alignSelf: 'flex-start', alignItems: 'center', gap: 6,
+                padding: '4px 10px',
+                borderRadius: 12,
+                background: 'var(--color-bg-secondary)',
+                border: '0.5px solid var(--color-border-secondary)',
+                fontSize: 11,
+                fontFamily: 'var(--font-mono)',
+                color: 'var(--color-text-secondary)',
+                marginLeft: 34,
+              }}>
+                <span style={{
+                  display: 'inline-block',
+                  width: 6, height: 6, borderRadius: '50%',
+                  background: activity.kind === 'thinking' ? 'var(--color-status-warning, #c96442)' : 'var(--color-accent)',
+                  animation: 'pulse 1.4s ease-in-out infinite',
+                }} />
+                <span>{activity.kind === 'thinking' ? 'Thinking…' : `Running ${activity.label}`}</span>
+                <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }`}</style>
+              </div>
+            )}
+            {isTyping && <TypingIndicator avatarOverride={assistantAvatar} />}
           </>
         )}
         <div ref={messagesEndRef} />
@@ -171,7 +283,61 @@ export function ChatView({
         display: 'flex',
         alignItems: 'flex-end',
         gap: '8px',
+        position: 'relative',
       }}>
+        {slashOpen && (
+          <div
+            style={{
+              position: 'absolute',
+              left: 12,
+              right: 12,
+              bottom: 'calc(100% + 4px)',
+              background: 'var(--color-bg-primary)',
+              border: '0.5px solid var(--color-border-primary)',
+              borderRadius: 8,
+              boxShadow: 'var(--shadow-card)',
+              padding: 4,
+              zIndex: 50,
+              maxHeight: 220,
+              overflowY: 'auto',
+            }}
+          >
+            {slashMatches.map((cmd, i) => (
+              <button
+                key={cmd.name}
+                onMouseDown={(e) => { e.preventDefault(); setInput(cmd.name); textareaRef.current?.focus(); }}
+                style={{
+                  display: 'flex', alignItems: 'baseline', gap: 8,
+                  width: '100%', padding: '6px 10px', borderRadius: 5,
+                  border: 'none',
+                  background: i === slashIdx ? 'var(--color-surface-active)' : 'transparent',
+                  cursor: 'pointer', textAlign: 'left',
+                }}
+              >
+                <span style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 12,
+                  color: 'var(--color-accent)',
+                  fontWeight: 500,
+                }}>{cmd.name}</span>
+                <span style={{
+                  fontSize: 11,
+                  color: 'var(--color-text-tertiary)',
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1,
+                }}>{cmd.description}</span>
+              </button>
+            ))}
+            <div style={{
+              padding: '4px 10px 2px',
+              fontSize: 10,
+              color: 'var(--color-text-tertiary)',
+              fontFamily: 'var(--font-mono)',
+              letterSpacing: 0.04,
+            }}>
+              ↑↓ navigate · ⏎/⇥ select · esc cancel
+            </div>
+          </div>
+        )}
         <textarea
           ref={textareaRef}
           value={input}
@@ -196,30 +362,54 @@ export function ChatView({
           }}
         />
 
-        <button
-          onClick={handleSend}
-          disabled={!hasInput}
-          style={{
-            width: '32px',
-            height: '32px',
-            borderRadius: '50%',
-            border: 'none',
-            background: hasInput ? 'var(--color-accent)' : 'var(--color-bg-tertiary)',
-            color: hasInput ? 'var(--color-bubble-user-text)' : 'var(--color-text-tertiary)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: hasInput ? 'pointer' : 'default',
-            flexShrink: 0,
-            marginBottom: '3px',
-            transition: 'background 0.2s, color 0.2s, transform 0.1s',
-            fontSize: '16px',
-            fontWeight: 600,
-          }}
-          title="Send"
-        >
-          <ArrowUp size={18} strokeWidth={2} />
-        </button>
+        {isTyping && onInterrupt ? (
+          <button
+            onClick={onInterrupt}
+            style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '50%',
+              border: 'none',
+              background: 'var(--color-status-disconnected)',
+              color: 'var(--color-bubble-user-text)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              flexShrink: 0,
+              marginBottom: '3px',
+              transition: 'background 0.2s, color 0.2s, transform 0.1s',
+            }}
+            title="Stop"
+          >
+            <Square size={12} strokeWidth={0} fill="currentColor" />
+          </button>
+        ) : (
+          <button
+            onClick={handleSend}
+            disabled={!hasInput}
+            style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '50%',
+              border: 'none',
+              background: hasInput ? 'var(--color-accent)' : 'var(--color-bg-tertiary)',
+              color: hasInput ? 'var(--color-bubble-user-text)' : 'var(--color-text-tertiary)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: hasInput ? 'pointer' : 'default',
+              flexShrink: 0,
+              marginBottom: '3px',
+              transition: 'background 0.2s, color 0.2s, transform 0.1s',
+              fontSize: '16px',
+              fontWeight: 600,
+            }}
+            title="Send"
+          >
+            <ArrowUp size={18} strokeWidth={2} />
+          </button>
+        )}
       </div>
 
       {showScrollBtn && (
@@ -254,7 +444,7 @@ export function ChatView({
 
 /* ── Sub-components ── */
 
-function EmptyState() {
+function EmptyState({ glyph }: { glyph?: React.ReactNode }) {
   return (
     <div style={{
       flex: 1,
@@ -275,7 +465,7 @@ function EmptyState() {
         fontSize: '32px',
         marginBottom: '4px',
       }}>
-        <LobsterIcon size={36} />
+        {glyph ?? <LobsterIcon size={36} />}
       </div>
       <span style={{
         fontFamily: 'var(--font-display)',
@@ -305,9 +495,10 @@ function EmptyState() {
   );
 }
 
-function MessageBubble({ message, agentEmoji }: {
+function MessageBubble({ message, agentEmoji, avatarOverride }: {
   message: ChatMessage;
   agentEmoji?: string;
+  avatarOverride?: React.ReactNode;
 }) {
   const isUser = message.role === 'user';
 
@@ -338,7 +529,7 @@ function MessageBubble({ message, agentEmoji }: {
             lineHeight: 1,
             overflow: 'hidden',
           }}>
-            {agentEmoji || '🦞'}
+            {avatarOverride ?? agentEmoji ?? '🦞'}
           </div>
         )}
 
@@ -380,7 +571,7 @@ function MessageBubble({ message, agentEmoji }: {
   );
 }
 
-function TypingIndicator() {
+function TypingIndicator({ avatarOverride }: { avatarOverride?: React.ReactNode }) {
   return (
     <div style={{
       display: 'flex',
@@ -399,7 +590,7 @@ function TypingIndicator() {
         fontSize: '15px',
         lineHeight: 1,
       }}>
-        <LobsterIcon size={18} />
+        {avatarOverride ?? <LobsterIcon size={18} />}
       </div>
       <div style={{
         padding: '10px 16px',

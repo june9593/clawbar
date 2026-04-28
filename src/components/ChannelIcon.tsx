@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Channel } from '../types';
 import { LobsterIcon } from './LobsterIcon';
+import { identiconFromKey } from '../utils/claude-icon';
 
 interface Props {
   channel: Channel;
@@ -16,12 +17,30 @@ export function ChannelIcon({ channel, active, onClick, onContextMenu }: Props) 
     if (channel.kind === 'openclaw') {
       return <LobsterIcon size={26} />;
     }
+    if (channel.kind === 'claude') {
+      const ident = identiconFromKey(channel.projectKey + ':' + channel.sessionId);
+      const cell = 4; // px per cell — 5*4 = 20 px
+      return (
+        <svg width="22" height="22" viewBox="0 0 20 20" style={{ borderRadius: 4, background: 'rgba(0,0,0,0.04)' }}>
+          {ident.cells.map((row, r) =>
+            row.map((on, c) => on ? (
+              <rect key={`${r}-${c}`} x={c * cell} y={r * cell} width={cell} height={cell} fill={ident.color} />
+            ) : null)
+          )}
+        </svg>
+      );
+    }
+    // kind === 'web'
     const icon = channel.icon;
     if (icon.startsWith('http://') || icon.startsWith('https://') || icon.startsWith('data:')) {
       return <img src={icon} alt="" style={{ width: 22, height: 22, borderRadius: 4 }} />;
     }
     return <span style={{ fontSize: 22, lineHeight: 1 }}>{icon}</span>;
   };
+
+  const tooltip = channel.kind === 'claude'
+    ? `${channel.name}\n${channel.projectDir}`
+    : channel.name;
 
   return (
     <div style={{ position: 'relative', width: 36, height: 36 }}>
@@ -30,7 +49,7 @@ export function ChannelIcon({ channel, active, onClick, onContextMenu }: Props) 
         onContextMenu={onContextMenu}
         onMouseEnter={() => setHover(true)}
         onMouseLeave={() => setHover(false)}
-        title={channel.name}
+        title={tooltip}
         style={{
           width: 36, height: 36, borderRadius: 10,
           border: 'none',

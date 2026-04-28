@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Channel, WebChannelDef } from '../types';
+import type { Channel, WebChannelDef, ClaudeChannelDef } from '../types';
 import { useSettingsStore } from './settingsStore';
 
 interface ChannelState {
@@ -27,6 +27,20 @@ interface ChannelState {
 
   // CRUD on user-added
   addCustom: (url: string) => string | null;  // returns id, or null if duplicate / invalid
+  addClaude: (input: {
+    projectDir: string;
+    projectKey: string;
+    sessionId: string;
+    preview: string;
+    iconLetter: string;
+    iconColor: string;
+  }) => string;
+  /**
+   * Replace the sessionId of an existing claude channel in place. Kills the
+   * channel's current child process (if any) so the next `claude:send` will
+   * spawn against the new session id.
+   */
+  switchClaudeSession: (channelId: string, newSessionId: string, newPreview: string) => void;
   remove: (id: string) => void;
 
   // Common edits
@@ -118,12 +132,75 @@ export const useChannelStore = create<ChannelState>((set, get) => ({
     return id;
   },
 
+  addClaude: ({ projectDir, projectKey, sessionId, preview, iconLetter, iconColor }) => {
+    // Dedupe by (kind:'claude', sessionId)
+    const existing = get().channels.find(
+      (c) => c.kind === 'claude' && c.sessionId === sessionId
+    );
+    if (existing) {
+      get().setActive(existing.id);
+      return existing.id;
+    }
+    const id = `cl-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const shortName = (() => {
+      const parts = projectDir.split('/').filter(Boolean);
+      return parts.length > 0 ? parts[parts.length - 1] : projectDir;
+    })();
+    const trimmedPreview = preview.length > 28 ? preview.slice(0, 28) + '…' : preview || '(empty session)';
+    const newChannel: ClaudeChannelDef = {
+      id,
+      kind: 'claude',
+      name: `${shortName} · ${trimmedPreview}`,
+      builtin: false,
+      enabled: true,
+      projectDir,
+      projectKey,
+      sessionId,
+      preview,
+      iconLetter,
+      iconColor,
+    };
+    const channels = [...get().channels, newChannel];
+    set({ channels, activeChannelId: id });
+    persist(channels, id);
+    return id;
+  },
+
+  switchClaudeSession: (channelId, newSessionId, newPreview) => {
+    const list = get().channels;
+    const target = list.find((c) => c.id === channelId);
+    if (!target || target.kind !== 'claude') return;
+    if (target.sessionId === newSessionId) return;
+
+    // Kill the in-flight child for the old session, if any.
+    window.electronAPI?.claude?.kill(channelId).catch(() => { /* ignore */ });
+
+    const trimmedPreview = newPreview.length > 28
+      ? newPreview.slice(0, 28) + '…'
+      : newPreview || '(empty session)';
+    const projectShort = (() => {
+      const parts = target.projectDir.split('/').filter(Boolean);
+      return parts.length > 0 ? parts[parts.length - 1] : target.projectDir;
+    })();
+
+    const channels = list.map((c) =>
+      c.id === channelId && c.kind === 'claude'
+        ? { ...c, sessionId: newSessionId, preview: newPreview, name: `${projectShort} · ${trimmedPreview}` }
+        : c
+    );
+    set({ channels });
+    persist(channels, get().activeChannelId);
+  },
+
   remove: (id) => {
     const list = get().channels;
     const idx = list.findIndex((c) => c.id === id);
     if (idx < 0) return;
     const target = list[idx];
     if (target.kind === 'openclaw' || target.builtin) return;
+    if (target.kind === 'claude') {
+      window.electronAPI?.claude?.kill(id).catch(() => { /* ignore */ });
+    }
     const channels = list.filter((c) => c.id !== id);
     let next = get().activeChannelId;
     if (next === id) {

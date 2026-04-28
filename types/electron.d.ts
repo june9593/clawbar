@@ -33,6 +33,32 @@ export interface ElectronAPI {
     onDragEnd(): void;
     onRightClick(): void;
   };
+  claude: {
+    checkCli(): Promise<{ found: boolean; version?: string; path?: string }>;
+    scanProjects(): Promise<Array<{ key: string; decodedPath: string; sessionCount: number }>>;
+    listSessions(projectKey: string): Promise<Array<{ sessionId: string; preview: string; mtime: number }>>;
+    spawn(channelId: string, projectDir: string, sessionId: string | null): Promise<void>;
+    send(channelId: string, message: string): Promise<void>;
+    kill(channelId: string): Promise<void>;
+    interrupt(channelId: string): Promise<void>;
+    loadHistory(projectKey: string, sessionId: string): Promise<Array<{
+      role: 'user' | 'assistant';
+      content: string;
+      timestamp: number;
+    }>>;
+    onEvent(cb: (payload: {
+      channelId: string;
+      type?: string;
+      state?: 'delta' | 'final';
+      message?: { role: 'assistant' | 'user'; content: string };
+      code?: number | null;
+      // Optional fields populated by `init` and `activity` events.
+      slashCommands?: string[];
+      skills?: string[];
+      kind?: string;
+      label?: string;
+    }) => void): () => void;
+  };
 }
 
 declare global {
