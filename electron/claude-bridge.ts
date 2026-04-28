@@ -423,9 +423,25 @@ function abortTurn(channelId: string): void {
   const s = sessions.get(channelId);
   if (!s || !s.q) return;
   s.lastAbortByUser = true;
-  s.abortController.abort();
-  // Replace the controller so the next turn has a fresh signal.
-  s.abortController = new AbortController();
+  // Prefer SDK's graceful per-turn interrupt — keeps the Query alive so
+  // the user can immediately send the next message without us having to
+  // re-open the SDK process. (abortController.abort() would hard-kill
+  // the Query; the user would lose the ability to resume mid-thread.)
+  try {
+    s.q.interrupt?.();
+  } catch { /* if interrupt isn't available or throws, the SDK is in a
+                bad state — runSession's catch will surface it. */ }
+  // Drain pending approval/ask resolvers so canUseTool unwinds cleanly
+  // (the SDK will then unwind the turn). Use 'deny' / [] so the model
+  // sees a deny, matching what the user signalled by hitting Stop.
+  for (const [id, p] of s.pendingApprovals) {
+    p.resolve('deny');
+    s.pendingApprovals.delete(id);
+  }
+  for (const [id, p] of s.pendingAsks) {
+    p.resolve([]);
+    s.pendingAsks.delete(id);
+  }
   emit(channelId, { kind: 'aborted' });
 }
 
