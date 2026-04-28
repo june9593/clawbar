@@ -61,4 +61,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
     onDragEnd: () => ipcRenderer.send('pet:drag-end'),
     onRightClick: () => ipcRenderer.send('pet:right-click'),
   },
+  claude: {
+    checkCli: () => ipcRenderer.invoke('claude:check-cli'),
+    scanProjects: () => ipcRenderer.invoke('claude:scan-projects'),
+    listSessions: (projectKey: string) => ipcRenderer.invoke('claude:list-sessions', projectKey),
+    spawn: (channelId: string, projectDir: string, sessionId: string | null) =>
+      ipcRenderer.invoke('claude:spawn', channelId, projectDir, sessionId),
+    send: (channelId: string, message: string) =>
+      ipcRenderer.invoke('claude:send', channelId, message),
+    kill: (channelId: string) => ipcRenderer.invoke('claude:kill', channelId),
+    onEvent: (cb: (payload: { channelId: string; [k: string]: unknown }) => void) => {
+      const handler = (_e: unknown, payload: { channelId: string; [k: string]: unknown }) => cb(payload);
+      ipcRenderer.on('claude:event', handler);
+      return () => ipcRenderer.removeListener('claude:event', handler);
+    },
+  },
 });
