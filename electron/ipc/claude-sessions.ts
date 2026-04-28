@@ -116,8 +116,15 @@ function resolveCliPath(): Promise<string | null> {
     proc.on('error', () => { clearTimeout(timer); settle(null); });
     proc.on('exit', (code) => {
       clearTimeout(timer);
-      const trimmed = out.trim();
-      if (code === 0 && trimmed) settle(trimmed);
+      // zsh login shells print 'Restored session: ...' to stdout before
+      // command output; shell functions can print multiple lines too. We
+      // want only `command -v`'s real output, which is the LAST non-empty
+      // line of stdout. Then sanity-check it's an absolute path before
+      // trusting it (anything else — function body, alias, builtin name —
+      // would fail later when we try to spawn it).
+      const lines = out.split('\n').map((l) => l.trim()).filter(Boolean);
+      const last = lines[lines.length - 1] ?? '';
+      if (code === 0 && last.startsWith('/')) settle(last);
       else settle(null);
     });
   });
