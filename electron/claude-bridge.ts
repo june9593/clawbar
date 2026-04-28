@@ -1,5 +1,5 @@
 import { ipcMain, BrowserWindow } from 'electron';
-import { query, type Query, type CanUseTool, type PermissionMode } from '@anthropic-ai/claude-agent-sdk';
+import { query, AbortError, type Query, type CanUseTool, type PermissionMode } from '@anthropic-ai/claude-agent-sdk';
 import { randomUUID } from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -41,6 +41,10 @@ interface ActiveSession {
   lastActivityAt: number;
   /** Idle close timer handle. */
   idleTimer: NodeJS.Timeout | null;
+  /** True iff the most recent abort was triggered by abortTurn() (a user
+   *  click on Stop). runSession's catch reads-and-clears this so we don't
+   *  double-emit `aborted` when the SDK's iterator unwinds in response. */
+  lastAbortByUser: boolean;
 }
 
 const sessions = new Map<string, ActiveSession>();
@@ -210,6 +214,20 @@ async function runSession(s: ActiveSession, q: Query): Promise<void> {
 
       // ── result: turn finished ─────────────────────────────────────────
       if (msg.type === 'result') {
+        const subtype = msg.subtype as string | undefined;
+        const isError = msg.is_error === true
+          || (typeof subtype === 'string' && subtype.startsWith('error_'));
+        if (isError) {
+          // Surface the failure mode before the turn-end so the renderer
+          // can show what went wrong (e.g. max_turns hit, budget exceeded,
+          // execution error).
+          const reason = subtype ?? 'error';
+          emit(s.channelId, {
+            kind: 'error',
+            message: `Turn ended: ${reason}`,
+            recoverable: true,
+          });
+        }
         const usage = msg.usage as { input_tokens?: number; output_tokens?: number } | undefined;
         emit(s.channelId, {
           kind: 'turn-end',
@@ -223,12 +241,19 @@ async function runSession(s: ActiveSession, q: Query): Promise<void> {
       }
     }
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    // SDK throws AbortError when the user aborted — surface as `aborted`,
-    // not as a hard error.
-    if (message.includes('Abort') || message.includes('abort')) {
-      emit(s.channelId, { kind: 'aborted' });
+    const isAbort = err instanceof AbortError
+      || (err instanceof Error && err.name === 'AbortError');
+    if (isAbort) {
+      // If abortTurn() already emitted `aborted` (the user clicked Stop),
+      // don't double-emit — the SDK's iterator unwind is downstream of
+      // that user action. Read-and-clear the flag.
+      if (s.lastAbortByUser) {
+        s.lastAbortByUser = false;
+      } else {
+        emit(s.channelId, { kind: 'aborted' });
+      }
     } else {
+      const message = err instanceof Error ? err.message : String(err);
       emit(s.channelId, { kind: 'error', message, recoverable: true });
     }
   }
@@ -285,6 +310,7 @@ async function startSession(
     allowedForSession: new Set<string>(),
     pendingApprovals: new Map(),
     pendingAsks: new Map(),
+    lastAbortByUser: false,
     lastActivityAt: Date.now(),
     idleTimer: null,
   };
@@ -315,6 +341,7 @@ function sendMessage(channelId: string, text: string): void {
 function abortTurn(channelId: string): void {
   const s = sessions.get(channelId);
   if (!s || !s.q) return;
+  s.lastAbortByUser = true;
   s.abortController.abort();
   // Replace the controller so the next turn has a fresh signal.
   s.abortController = new AbortController();
