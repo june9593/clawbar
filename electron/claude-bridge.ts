@@ -84,6 +84,9 @@ function closeQuery(s: ActiveSession) {
   s.pendingApprovals.clear();
   s.pendingAsks.clear();
   if (s.idleTimer) { clearTimeout(s.idleTimer); s.idleTimer = null; }
+  // Clear the user-abort flag — the next Query opens fresh; any future
+  // AbortError isn't necessarily user-initiated.
+  s.lastAbortByUser = false;
 }
 
 /** Tear down the session entirely — removes it from the map. */
@@ -427,10 +430,13 @@ function abortTurn(channelId: string): void {
   // the user can immediately send the next message without us having to
   // re-open the SDK process. (abortController.abort() would hard-kill
   // the Query; the user would lose the ability to resume mid-thread.)
+  // interrupt() returns a Promise; the synchronous try/catch only catches
+  // sync throws. We swallow the async rejection too — if interrupt fails,
+  // runSession's catch will surface the eventual iterator throw, and the
+  // resolver drain below still unwinds the canUseTool callback.
   try {
-    s.q.interrupt?.();
-  } catch { /* if interrupt isn't available or throws, the SDK is in a
-                bad state — runSession's catch will surface it. */ }
+    s.q.interrupt?.()?.catch(() => { /* swallow async rejection */ });
+  } catch { /* sync throw — same fallback */ }
   // Drain pending approval/ask resolvers so canUseTool unwinds cleanly
   // (the SDK will then unwind the turn). Use 'deny' / [] so the model
   // sees a deny, matching what the user signalled by hitting Stop.
