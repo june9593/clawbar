@@ -87,19 +87,38 @@ async function readFirstUserMessage(filePath: string): Promise<string> {
   });
 }
 
-/** Returns true if `claude` resolves on PATH. */
-function checkCli(): Promise<{ found: boolean; version?: string; path?: string }> {
+/** Resolve the absolute path of `claude` on the user's PATH. Uses a login
+ *  shell so a `~/.zshrc` PATH update is picked up even when Electron is
+ *  launched by Finder (which gives us a minimal PATH). */
+function resolveCliPath(): Promise<string | null> {
   return new Promise((resolve) => {
-    const proc = spawn('claude', ['--version'], { shell: false });
+    // -i -c forces interactive shell init so PATH from rc files is loaded.
+    const proc = spawn(process.env.SHELL || '/bin/zsh', ['-ic', 'command -v claude'], { shell: false });
+    let out = '';
+    proc.stdout?.on('data', (c) => (out += c.toString()));
+    proc.on('error', () => resolve(null));
+    proc.on('exit', (code) => {
+      const trimmed = out.trim();
+      if (code === 0 && trimmed) resolve(trimmed);
+      else resolve(null);
+    });
+  });
+}
+
+/** Returns whether the user has `claude` installed, plus its absolute path
+ *  and reported version. The path is what the SDK needs as
+ *  `pathToClaudeCodeExecutable`. */
+async function checkCli(): Promise<{ found: boolean; version?: string; path?: string }> {
+  const cliPath = await resolveCliPath();
+  if (!cliPath) return { found: false };
+  return new Promise((resolve) => {
+    const proc = spawn(cliPath, ['--version'], { shell: false });
     let out = '';
     proc.stdout?.on('data', (c) => (out += c.toString()));
     proc.on('error', () => resolve({ found: false }));
     proc.on('exit', (code) => {
-      if (code === 0) {
-        resolve({ found: true, version: out.trim() });
-      } else {
-        resolve({ found: false });
-      }
+      if (code === 0) resolve({ found: true, version: out.trim(), path: cliPath });
+      else resolve({ found: false });
     });
   });
 }
