@@ -185,8 +185,13 @@ async function loadHistory(projectKey: string, sessionId: string): Promise<Array
       let obj: Record<string, unknown>;
       try { obj = JSON.parse(line); } catch { return; }
       const t = obj.type as string | undefined;
+      const ts = typeof obj.timestamp === 'string' ? Date.parse(obj.timestamp as string) : Date.now();
+
       if (t === 'user') {
-        const m = obj.message as { role?: string; content?: unknown } | undefined;
+        // Skip Claude's internal envelopes — we don't want to render them as
+        // user bubbles.
+        if (obj.isMeta) return;
+        const m = obj.message as { content?: unknown } | undefined;
         if (!m) return;
         let content = '';
         if (typeof m.content === 'string') content = m.content;
@@ -196,11 +201,24 @@ async function loadHistory(projectKey: string, sessionId: string): Promise<Array
             .map((p: { text?: string }) => p.text ?? '')
             .join('');
         }
-        if (content) {
-          const ts = typeof obj.timestamp === 'string' ? Date.parse(obj.timestamp) : Date.now();
-          turns.push({ role: 'user', content, timestamp: ts || Date.now() });
+        const trimmed = content.trim();
+        if (!trimmed) return;
+        if (trimmed.startsWith('<local-command-caveat>')) return;
+        if (trimmed.startsWith('<command-output>')) return;
+        // Slash command echo: `<command-name>/foo</command-name>...`. Render
+        // a clean bubble like "/foo" instead of the raw envelope.
+        if (trimmed.startsWith('<command-name>')) {
+          const m2 = /<command-name>([^<]+)<\/command-name>/.exec(trimmed);
+          const slash = m2 ? m2[1] : trimmed;
+          turns.push({ role: 'user', content: slash, timestamp: ts || Date.now() });
+          return;
         }
-      } else if (t === 'assistant') {
+        if (trimmed === 'Continue from where you left off.') return;
+        turns.push({ role: 'user', content: trimmed, timestamp: ts || Date.now() });
+        return;
+      }
+
+      if (t === 'assistant') {
         const m = obj.message as { content?: unknown } | undefined;
         if (!m || !Array.isArray(m.content)) return;
         const content = m.content
@@ -208,9 +226,22 @@ async function loadHistory(projectKey: string, sessionId: string): Promise<Array
           .map((p: { text?: string }) => p.text ?? '')
           .join('');
         if (content) {
-          const ts = typeof obj.timestamp === 'string' ? Date.parse(obj.timestamp) : Date.now();
           turns.push({ role: 'assistant', content, timestamp: ts || Date.now() });
         }
+        return;
+      }
+
+      // Slash command output: written as type:"system", subtype:"local_command",
+      // content="<local-command-stdout>...</local-command-stdout>". Render it
+      // as an assistant message (the slash command's response, not user-typed).
+      if (t === 'system' && obj.subtype === 'local_command') {
+        const raw = typeof obj.content === 'string' ? (obj.content as string) : '';
+        const inner = /<local-command-stdout>([\s\S]*?)<\/local-command-stdout>/.exec(raw);
+        const text = (inner ? inner[1] : raw).trim();
+        if (text) {
+          turns.push({ role: 'assistant', content: text, timestamp: ts || Date.now() });
+        }
+        return;
       }
     });
     rl.on('close', () => resolve(turns));

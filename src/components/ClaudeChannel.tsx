@@ -7,6 +7,15 @@ interface Props {
   isActive: boolean;
 }
 
+// Claude brand sparkle — used as the assistant avatar inside the chat.
+function ClaudeSparkle({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 32 32" fill="#cc785c" aria-hidden="true">
+      <path d="M16 2 L19 13 L30 16 L19 19 L16 30 L13 19 L2 16 L13 13 Z" />
+    </svg>
+  );
+}
+
 export function ClaudeChannel({ channel, isActive }: Props) {
   const chat = useClaudeSession(channel.id, channel.projectDir, channel.sessionId, channel.projectKey);
 
@@ -30,6 +39,8 @@ export function ClaudeChannel({ channel, isActive }: Props) {
         deleteSession={chat.deleteSession}
         pendingApprovals={chat.pendingApprovals}
         resolveApproval={chat.resolveApproval}
+        assistantAvatar={<ClaudeSparkle size={16} />}
+        emptyStateGlyph={<ClaudeSparkle size={36} />}
       />
     </div>
   );

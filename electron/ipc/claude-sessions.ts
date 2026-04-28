@@ -27,7 +27,37 @@ function decodePath(key: string): string {
   return '/' + key.slice(1).replace(/-/g, '/');
 }
 
-/** Read first JSON line whose type === 'user'; return its message.content as string. */
+/**
+ * Extract a clean first user prompt for a session preview / title.
+ *
+ * Skips Claude Code's internal envelopes that the UI shouldn't show:
+ *   - {isMeta: true}                              (system-injected continuations)
+ *   - content starting with "<local-command-caveat>"  (slash command preface)
+ *   - content starting with "<command-name>"      (slash command echo)
+ *   - content === "Continue from where you left off." (resume bootstrap)
+ */
+function extractUserText(msg: { content?: unknown } | undefined): string {
+  if (!msg) return '';
+  const c = msg.content;
+  if (typeof c === 'string') return c;
+  if (Array.isArray(c)) {
+    return c
+      .filter((p: { type?: string }) => p.type === 'text')
+      .map((p: { text?: string }) => p.text ?? '')
+      .join('');
+  }
+  return '';
+}
+
+function isUserEnvelope(text: string): boolean {
+  if (!text) return true;
+  if (text.startsWith('<local-command-caveat>')) return true;
+  if (text.startsWith('<command-name>')) return true;
+  if (text.startsWith('<command-output>')) return true;
+  if (text === 'Continue from where you left off.') return true;
+  return false;
+}
+
 async function readFirstUserMessage(filePath: string): Promise<string> {
   return new Promise((resolve) => {
     const stream = fs.createReadStream(filePath, { encoding: 'utf-8' });
@@ -44,9 +74,12 @@ async function readFirstUserMessage(filePath: string): Promise<string> {
       if (resolved) return;
       try {
         const obj = JSON.parse(line);
-        if (obj.type === 'user' && obj.message && typeof obj.message.content === 'string') {
-          finish(obj.message.content);
-        }
+        if (obj.type !== 'user') return;
+        if (obj.isMeta) return;
+        const text = extractUserText(obj.message).trim();
+        if (!text) return;
+        if (isUserEnvelope(text)) return;
+        finish(text);
       } catch { /* skip malformed line */ }
     });
     rl.on('close', () => finish(''));

@@ -24,6 +24,12 @@ interface ChatViewProps {
   deleteSession: (key: string) => void;
   pendingApprovals: ApprovalRequest[];
   resolveApproval: (id: string, decision: ApprovalDecision) => void;
+  /** Optional override for the assistant avatar; if set, the OpenClaw
+   *  agent-identity fetch is skipped and this glyph is rendered instead.
+   *  Used by the Claude channel to show a Claude sparkle rather than 🦞. */
+  assistantAvatar?: React.ReactNode;
+  /** Optional override for the empty-state badge; mirrors `assistantAvatar`. */
+  emptyStateGlyph?: React.ReactNode;
 }
 
 function formatTime(ts: string): string {
@@ -36,6 +42,7 @@ export function ChatView({
   messages, isConnected, isTyping, sendMessage,
   sessions, currentSessionKey, switchSession, createSession, deleteSession,
   pendingApprovals, resolveApproval,
+  assistantAvatar, emptyStateGlyph,
 }: ChatViewProps) {
   const [input, setInput] = useState('');
   const [agentEmoji, setAgentEmoji] = useState<string>('🦞');
@@ -61,6 +68,9 @@ export function ChatView({
 
   // Fetch agent identity for avatar
   useEffect(() => {
+    // If the embedding channel supplied its own avatar (e.g. Claude), skip the
+    // OpenClaw-specific agent-identity WebSocket fetch entirely.
+    if (assistantAvatar !== undefined) return;
     const api = window.electronAPI?.ws;
     if (!api || !isConnected) return;
 
@@ -84,7 +94,7 @@ export function ChatView({
 
     const timer = setTimeout(unsub, 5000);
     return () => { clearTimeout(timer); unsub(); };
-  }, [isConnected, currentSessionKey]);
+  }, [isConnected, currentSessionKey, assistantAvatar]);
 
   const adjustTextarea = useCallback(() => {
     const ta = textareaRef.current;
@@ -138,13 +148,13 @@ export function ChatView({
         }}
       >
         {isEmpty ? (
-          <EmptyState />
+          <EmptyState glyph={emptyStateGlyph} />
         ) : (
           <>
             {messages.map((msg) => (
-              <MessageBubble key={msg.id} message={msg} agentEmoji={agentEmoji} />
+              <MessageBubble key={msg.id} message={msg} agentEmoji={agentEmoji} avatarOverride={assistantAvatar} />
             ))}
-            {isTyping && <TypingIndicator />}
+            {isTyping && <TypingIndicator avatarOverride={assistantAvatar} />}
           </>
         )}
         <div ref={messagesEndRef} />
@@ -254,7 +264,7 @@ export function ChatView({
 
 /* ── Sub-components ── */
 
-function EmptyState() {
+function EmptyState({ glyph }: { glyph?: React.ReactNode }) {
   return (
     <div style={{
       flex: 1,
@@ -275,7 +285,7 @@ function EmptyState() {
         fontSize: '32px',
         marginBottom: '4px',
       }}>
-        <LobsterIcon size={36} />
+        {glyph ?? <LobsterIcon size={36} />}
       </div>
       <span style={{
         fontFamily: 'var(--font-display)',
@@ -305,9 +315,10 @@ function EmptyState() {
   );
 }
 
-function MessageBubble({ message, agentEmoji }: {
+function MessageBubble({ message, agentEmoji, avatarOverride }: {
   message: ChatMessage;
   agentEmoji?: string;
+  avatarOverride?: React.ReactNode;
 }) {
   const isUser = message.role === 'user';
 
@@ -338,7 +349,7 @@ function MessageBubble({ message, agentEmoji }: {
             lineHeight: 1,
             overflow: 'hidden',
           }}>
-            {agentEmoji || '🦞'}
+            {avatarOverride ?? agentEmoji ?? '🦞'}
           </div>
         )}
 
@@ -380,7 +391,7 @@ function MessageBubble({ message, agentEmoji }: {
   );
 }
 
-function TypingIndicator() {
+function TypingIndicator({ avatarOverride }: { avatarOverride?: React.ReactNode }) {
   return (
     <div style={{
       display: 'flex',
@@ -399,7 +410,7 @@ function TypingIndicator() {
         fontSize: '15px',
         lineHeight: 1,
       }}>
-        <LobsterIcon size={18} />
+        {avatarOverride ?? <LobsterIcon size={18} />}
       </div>
       <div style={{
         padding: '10px 16px',

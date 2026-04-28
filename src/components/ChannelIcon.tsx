@@ -38,6 +38,10 @@ export function ChannelIcon({ channel, active, onClick, onContextMenu }: Props) 
     return <span style={{ fontSize: 22, lineHeight: 1 }}>{icon}</span>;
   };
 
+  const tooltip = channel.kind === 'claude'
+    ? `${channel.name}\n${channel.projectDir}`
+    : channel.name;
+
   return (
     <div style={{ position: 'relative', width: 36, height: 36 }}>
       <button
@@ -45,7 +49,7 @@ export function ChannelIcon({ channel, active, onClick, onContextMenu }: Props) 
         onContextMenu={onContextMenu}
         onMouseEnter={() => setHover(true)}
         onMouseLeave={() => setHover(false)}
-        title={channel.name}
+        title={tooltip}
         style={{
           width: 36, height: 36, borderRadius: 10,
           border: 'none',
