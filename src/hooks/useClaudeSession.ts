@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import type { ChatMessage, Session } from './useClawChat';
 import type { ClaudeEvent, ClaudeEventEnvelope, ApprovalDecision, AskQuestion } from '../../shared/claude-events';
 import { useChannelStore } from '../stores/channelStore';
@@ -66,10 +66,30 @@ export function useClaudeSession(
   const [pendingAsk, setPendingAsk] = useState<PendingAsk | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [availableCommands] = useState<string[]>([]); // SDK doesn't surface init slash commands; left empty for now
-  const cliPathRef = useRef<string | null>(null);
-  const initRef = useRef(false);
+  // (cliPathRef + initRef were removed: cliPathRef was unread; initRef
+  // broke under React 19 StrictMode double-mount because cleanup ran on
+  // the phantom unmount but the ref kept the second mount from
+  // reinitializing. The bridge's startSession is idempotent — it calls
+  // destroySession internally before creating — so we can let the effect
+  // run without guarding.)
 
   const switchClaudeSession = useChannelStore((s) => s.switchClaudeSession);
+
+  // Shared "resolve CLI then start the bridge session". Used by both the
+  // init effect and recheckCli (the install-guide retry button).
+  const checkAndStart = useCallback(async () => {
+    if (!window.electronAPI?.claude) return;
+    const r = await window.electronAPI.claude.checkCli();
+    if (!r.found || !r.path) {
+      setCliMissing(true);
+      return;
+    }
+    try {
+      await window.electronAPI.claude.start(channelId, projectDir, projectKey, sessionId, r.path);
+    } catch (e) {
+      setError(`start failed: ${(e as Error).message}`);
+    }
+  }, [channelId, projectDir, projectKey, sessionId]);
 
   // ── Sibling sessions for the dropdown (unchanged behaviour) ──────────
   useEffect(() => {
@@ -92,29 +112,20 @@ export function useClaudeSession(
   }, [projectKey, sessionId]);
 
   const recheckCli = useCallback(() => {
-    if (!window.electronAPI?.claude) return;
     setError(null);
     setCliMissing(false);
-    initRef.current = false; // allow the init effect to re-run
-    // Force the init effect to re-run by toggling a dep — easiest: reset and
-    // let parent re-render. Since parent doesn't re-render on its own, do
-    // the rebound work inline:
-    window.electronAPI.claude.checkCli().then((r) => {
-      if (!r.found || !r.path) {
-        setCliMissing(true);
-        return;
-      }
-      cliPathRef.current = r.path;
-      window.electronAPI.claude.start(channelId, projectDir, projectKey, sessionId, r.path).catch((e: Error) => {
-        setError(`start failed: ${e.message}`);
-      });
-    });
-  }, [channelId, projectDir, projectKey, sessionId]);
+    void checkAndStart();
+  }, [checkAndStart]);
 
   // ── Init: load history, check CLI, start session, subscribe to events ──
+  // We deliberately let this effect re-run if any dep changes (channel,
+  // project, session). The bridge's startSession is idempotent (calls
+  // destroySession internally first), so re-running is safe. ChannelHost
+  // keys ClaudeChannel by `${c.id}-${c.sessionId}` so deps never change
+  // in practice within one mount lifetime — but the contract holds even
+  // if a future caller passes mutable props.
   useEffect(() => {
-    if (!window.electronAPI?.claude || initRef.current) return;
-    initRef.current = true;
+    if (!window.electronAPI?.claude) return;
 
     // Load .jsonl history for instant context.
     window.electronAPI.claude.loadHistory(projectKey, sessionId).then((turns) => {
@@ -133,17 +144,7 @@ export function useClaudeSession(
       handleEvent(envelope.event);
     });
 
-    // Check CLI then start.
-    window.electronAPI.claude.checkCli().then((r) => {
-      if (!r.found || !r.path) {
-        setCliMissing(true);
-        return;
-      }
-      cliPathRef.current = r.path;
-      window.electronAPI.claude.start(channelId, projectDir, projectKey, sessionId, r.path).catch((e: Error) => {
-        setError(`start failed: ${e.message}`);
-      });
-    });
+    void checkAndStart();
 
     function handleEvent(ev: ClaudeEvent) {
       switch (ev.kind) {
@@ -236,9 +237,14 @@ export function useClaudeSession(
           setIsTyping(false);
           setPendingApproval(null);
           setPendingAsk(null);
-          // Drop streaming partial; surface a system-style line.
+          // Only surface "[Stopped by user]" if a turn was actually in
+          // progress (a stream/think bubble exists). Idle-close fires
+          // `aborted` too — we don't want to confuse users with a
+          // "Stopped" line they didn't trigger.
           setMessages((prev) => {
+            const hadStream = prev.some((m) => m.id === STREAM_ID || m.id === THINK_ID);
             const rest = prev.filter((m) => m.id !== STREAM_ID && m.id !== THINK_ID);
+            if (!hadStream) return rest;
             return [...rest, {
               id: `cl-x-${Date.now()}`,
               role: 'assistant',
@@ -250,17 +256,20 @@ export function useClaudeSession(
         case 'error':
           setError(ev.message);
           setIsTyping(false);
+          // Strip any partial stream/think bubbles — they'll never get
+          // promoted by a turn-end if the turn errored mid-stream.
+          setMessages((prev) => prev.filter((m) => m.id !== STREAM_ID && m.id !== THINK_ID));
           return;
       }
     }
 
     return () => {
       unsub();
-      // Tear down the SDK Query so we don't leak processes between unmounts
-      // (e.g. user removes the channel).
+      // Tear down the SDK Query on unmount (or on dep change). The bridge
+      // handles double-close gracefully.
       window.electronAPI.claude.close(channelId).catch(() => { /* ignore */ });
     };
-  }, [channelId, projectDir, projectKey, sessionId]);
+  }, [channelId, projectDir, projectKey, sessionId, checkAndStart]);
 
   const sendMessage = (text: string) => {
     if (!window.electronAPI?.claude) return;
