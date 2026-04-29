@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import type { ChatMessage, Session } from './useClawChat';
 import type { ClaudeEvent, ClaudeEventEnvelope, ApprovalDecision, AskQuestion } from '../../shared/claude-events';
 import { useChannelStore } from '../stores/channelStore';
@@ -77,6 +77,10 @@ export function useClaudeSession(
 
   // Shared "resolve CLI then start the bridge session". Used by both the
   // init effect and recheckCli (the install-guide retry button).
+  // We use useCallback with primitive deps; a useRef indirection lets the
+  // init effect read the latest version without including this callback
+  // in its deps array (which would re-fire the effect on every render
+  // where ChannelHost re-creates the props object).
   const checkAndStart = useCallback(async () => {
     if (!window.electronAPI?.claude) return;
     const r = await window.electronAPI.claude.checkCli();
@@ -90,6 +94,8 @@ export function useClaudeSession(
       setError(`start failed: ${(e as Error).message}`);
     }
   }, [channelId, projectDir, projectKey, sessionId]);
+  const checkAndStartRef = useRef(checkAndStart);
+  checkAndStartRef.current = checkAndStart;
 
   // ── Sibling sessions for the dropdown (unchanged behaviour) ──────────
   useEffect(() => {
@@ -153,7 +159,7 @@ export function useClaudeSession(
       }
     });
 
-    void checkAndStart();
+    void checkAndStartRef.current();
 
     function handleEvent(ev: ClaudeEvent) {
       switch (ev.kind) {
@@ -278,7 +284,7 @@ export function useClaudeSession(
       // handles double-close gracefully.
       window.electronAPI.claude.close(channelId).catch(() => { /* ignore */ });
     };
-  }, [channelId, projectDir, projectKey, sessionId, checkAndStart]);
+  }, [channelId, projectDir, projectKey, sessionId]);
 
   const sendMessage = (text: string) => {
     if (!window.electronAPI?.claude) return;

@@ -73,8 +73,12 @@ function statusIcon(tool: ToolMeta) {
 }
 
 function jsonOrText(v: unknown): string {
+  if (v === undefined || v === null) return '';
   if (typeof v === 'string') return v;
-  try { return JSON.stringify(v, null, 2); } catch { return String(v); }
+  try {
+    const s = JSON.stringify(v, null, 2);
+    return s ?? String(v);
+  } catch { return String(v); }
 }
 
 export function ToolCallPill({ tool }: Props) {
