@@ -141,7 +141,16 @@ export function useClaudeSession(
     // Subscribe FIRST so we don't miss events from start().
     const unsub = window.electronAPI.claude.onEvent((envelope: ClaudeEventEnvelope) => {
       if (envelope.channelId !== channelId) return;
-      handleEvent(envelope.event);
+      // DIAGNOSTIC for T19: log every event the hook receives. Remove
+      // once render flow is verified.
+      // eslint-disable-next-line no-console
+      console.log('[claude:event]', envelope.event.kind, envelope.event);
+      try {
+        handleEvent(envelope.event);
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error('[claude:event] handleEvent threw', err, 'for event', envelope.event);
+      }
     });
 
     void checkAndStart();
