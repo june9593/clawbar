@@ -84,10 +84,15 @@ export function useClaudeSession(
   const checkAndStart = useCallback(async () => {
     if (!window.electronAPI?.claude) return;
     const r = await window.electronAPI.claude.checkCli();
+    // eslint-disable-next-line no-console
+    console.log('[checkAndStart] checkCli returned', r);
     if (!r.found || !r.path) {
       setCliMissing(true);
       return;
     }
+    // Found and resolvable — make sure we're not stuck on a previous
+    // failed-checkCli view (e.g. flaky `zsh -ilc` first invocation).
+    setCliMissing(false);
     try {
       await window.electronAPI.claude.start(channelId, projectDir, projectKey, sessionId, r.path);
     } catch (e) {
@@ -163,6 +168,7 @@ export function useClaudeSession(
           setCliMissing(true);
           return;
         case 'cli-found':
+          setCliMissing(false);
           setIsConnected(true);
           setError(null);
           return;
