@@ -245,17 +245,13 @@ export function ChatView({
           <EmptyState glyph={emptyStateGlyph} />
         ) : (
           <>
-            {messages.map((msg) => {
-              if (msg.role === 'tool') {
-                // eslint-disable-next-line no-console
-                console.log('[ChatView] tool msg', msg.id, 'has tool field?', !!msg.tool, 'tool:', msg.tool);
-              }
-              return msg.role === 'tool' && msg.tool ? (
+            {messages.map((msg) => (
+              msg.role === 'tool' && msg.tool ? (
                 <ToolCallPill key={msg.id} tool={msg.tool} />
               ) : (
                 <MessageBubble key={msg.id} message={msg} agentEmoji={agentEmoji} avatarOverride={assistantAvatar} />
-              );
-            })}
+              )
+            ))}
             {activity && (
               <div style={{
                 display: 'inline-flex', alignSelf: 'flex-start', alignItems: 'center', gap: 6,

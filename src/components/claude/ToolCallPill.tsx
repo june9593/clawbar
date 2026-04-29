@@ -93,14 +93,12 @@ export function ToolCallPill({ tool }: Props) {
     <div style={{
       alignSelf: 'flex-start',
       maxWidth: '100%',
+      minWidth: 240,
       marginLeft: 34,
-      border: '0.5px solid var(--color-border-primary)',
+      border: '1px solid var(--color-border-primary)',
       borderRadius: 10,
-      // Use --color-bg-tertiary so the pill is visually distinct from
-      // both the chat background (--color-bg-primary) and message bubbles.
-      // --color-surface-card is the same as the chat bg in light mode and
-      // makes the pill render as a near-invisible thin line.
       background: 'var(--color-bg-tertiary)',
+      minHeight: 28,
       overflow: 'hidden',
     }}>      <button
         onClick={() => setExpanded((v) => !v)}

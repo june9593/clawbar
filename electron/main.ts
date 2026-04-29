@@ -153,9 +153,6 @@ function createWindow() {
     mainWindow.loadFile(path.join(__dirname, '../../dist/index.html'));
   }
 
-  // T19 DIAG: open devtools
-  mainWindow.webContents.openDevTools({ mode: 'detach' });
-
   mainWindow.webContents.on('before-input-event', (_event, input) => {
     if (input.key === 'Escape' && !isPinned && mainWindow?.isVisible()) {
       hideWindow();

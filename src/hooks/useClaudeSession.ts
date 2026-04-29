@@ -150,8 +150,6 @@ export function useClaudeSession(
     // Subscribe FIRST so we don't miss events from start().
     const unsub = window.electronAPI.claude.onEvent((envelope: ClaudeEventEnvelope) => {
       if (envelope.channelId !== channelId) return;
-      // eslint-disable-next-line no-console
-      console.log('[claude:event]', envelope.event.kind);
       try {
         handleEvent(envelope.event);
       } catch (err) {
@@ -202,25 +200,18 @@ export function useClaudeSession(
           });
           return;
         case 'tool-call':
-          // eslint-disable-next-line no-console
-          console.log('[hook] tool-call received', ev);
-          setMessages((prev) => {
-            const next = [...prev, {
-              id: `cl-t-${ev.callId}`,
-              role: 'tool' as const,
-              content: '',
-              timestamp: new Date(ev.startedAt).toISOString(),
-              tool: {
-                callId: ev.callId,
-                name: ev.tool,
-                input: ev.input,
-                startedAt: ev.startedAt,
-              },
-            }];
-            // eslint-disable-next-line no-console
-            console.log('[hook] messages after tool-call:', next.length, 'last role:', next[next.length-1].role);
-            return next;
-          });
+          setMessages((prev) => [...prev, {
+            id: `cl-t-${ev.callId}`,
+            role: 'tool' as const,
+            content: '',
+            timestamp: new Date(ev.startedAt).toISOString(),
+            tool: {
+              callId: ev.callId,
+              name: ev.tool,
+              input: ev.input,
+              startedAt: ev.startedAt,
+            },
+          }]);
           return;
         case 'tool-result':
           setMessages((prev) => prev.map((m) => {
