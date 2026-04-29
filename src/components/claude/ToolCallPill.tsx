@@ -88,9 +88,6 @@ export function ToolCallPill({ tool }: Props) {
   const out = jsonOrText(tool.output);
   const truncated = out.length > MAX_OUTPUT_PREVIEW;
   const shown = truncated ? out.slice(0, MAX_OUTPUT_PREVIEW) : out;
-  // T19 DIAG: confirm we have what we need to render
-  // eslint-disable-next-line no-console
-  console.log('[ToolCallPill]', tool.name, 'summary:', JSON.stringify(summary), 'tail:', JSON.stringify(t), 'input type:', typeof tool.input, 'input:', tool.input);
 
   return (
     <div style={{
@@ -99,7 +96,11 @@ export function ToolCallPill({ tool }: Props) {
       marginLeft: 34,
       border: '0.5px solid var(--color-border-primary)',
       borderRadius: 10,
-      background: 'var(--color-surface-card)',
+      // Use --color-bg-tertiary so the pill is visually distinct from
+      // both the chat background (--color-bg-primary) and message bubbles.
+      // --color-surface-card is the same as the chat bg in light mode and
+      // makes the pill render as a near-invisible thin line.
+      background: 'var(--color-bg-tertiary)',
       overflow: 'hidden',
     }}>      <button
         onClick={() => setExpanded((v) => !v)}

@@ -84,8 +84,6 @@ export function useClaudeSession(
   const checkAndStart = useCallback(async () => {
     if (!window.electronAPI?.claude) return;
     const r = await window.electronAPI.claude.checkCli();
-    // eslint-disable-next-line no-console
-    console.log('[checkAndStart] checkCli returned', r);
     if (!r.found || !r.path) {
       setCliMissing(true);
       return;

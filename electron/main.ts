@@ -153,10 +153,6 @@ function createWindow() {
     mainWindow.loadFile(path.join(__dirname, '../../dist/index.html'));
   }
 
-  // T19 DIAG: temporarily reopen devtools so we can see why checkCli
-  // is reporting cli-missing on a working install.
-  mainWindow.webContents.openDevTools({ mode: 'detach' });
-
   mainWindow.webContents.on('before-input-event', (_event, input) => {
     if (input.key === 'Escape' && !isPinned && mainWindow?.isVisible()) {
       hideWindow();

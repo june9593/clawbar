@@ -87,18 +87,22 @@ async function readFirstUserMessage(filePath: string): Promise<string> {
   });
 }
 
-/** Resolve the absolute path of `claude` on the user's PATH. Uses an
- *  interactive login shell so PATH set in either `~/.zshrc` (interactive
- *  rc) or `~/.zprofile` (login rc — where Homebrew's `brew shellenv`
- *  typically lives) is honoured even when Electron is launched by Finder
- *  with a minimal PATH. */
+/** Resolve the absolute path of `claude` on the user's PATH. Uses a
+ *  login (non-interactive) shell so PATH set in `~/.zprofile` (where
+ *  Homebrew, npm-global, and the native installer typically live) is
+ *  honoured even when Electron is launched by Finder with a minimal
+ *  PATH. We deliberately omit `-i` because Node's spawn has no TTY,
+ *  and an interactive shell hangs forever waiting for one. */
 function resolveCliPath(): Promise<string | null> {
   return new Promise((resolve) => {
-    // -i interactive + -l login + -c "command" — sources both rc files
-    // (interactive: ~/.zshrc; login: ~/.zprofile / ~/.profile) before
-    // running `command -v`. Homebrew's PATH is usually set in the login
-    // rc, so omitting -l would miss it on stock macOS configurations.
-    const proc = spawn(process.env.SHELL || '/bin/zsh', ['-ilc', 'command -v claude'], { shell: false });
+    // -lc (login + command, NOT interactive). `-i` interactive without
+    // a TTY hangs indefinitely under Node's spawn — Electron's spawn is
+    // non-TTY, so -i would never return. Login shell still sources
+    // ~/.zprofile (where Homebrew / npm-global / native installers
+    // typically extend PATH), which is enough to find `claude`. PATH
+    // set only in `~/.zshrc` interactive rc would be missed, but that
+    // is rare for tools meant to be available outside interactive use.
+    const proc = spawn(process.env.SHELL || '/bin/zsh', ['-lc', 'command -v claude'], { shell: false });
     let out = '';
     let settled = false;
     const settle = (val: string | null) => {
