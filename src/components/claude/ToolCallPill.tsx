@@ -113,8 +113,6 @@ export function ToolCallPill({ tool }: Props) {
     }}>      <button
         onClick={(e) => {
           e.stopPropagation();
-          // eslint-disable-next-line no-console
-          console.log('[ToolCallPill] click, expanded:', !expanded);
           setExpanded((v) => !v);
         }}
         style={{
