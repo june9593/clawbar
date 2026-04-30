@@ -1,7 +1,7 @@
 import { app, BrowserWindow, Tray, nativeImage, nativeTheme, ipcMain, screen } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
-import { setupSettingsIPC } from './ipc/settings';
+import { setupSettingsIPC, getSettings, setSetting } from './ipc/settings';
 import { setupWsBridge } from './ws-bridge';
 import { setupClaudeSessionsIPC } from './ipc/claude-sessions';
 import { setupClaudeBridge, killAllClaudeChannels } from './claude-bridge';
@@ -220,6 +220,7 @@ function createTray() {
   tray.on('right-click', () => {
     const { Menu } = require('electron');
     const petShown = isPetVisible();
+    const currentPet = (getSettings() as { petKind?: 'lobster' | 'claude' }).petKind ?? 'lobster';
     const contextMenu = Menu.buildFromTemplate([
       {
         label: 'Settings',
@@ -234,6 +235,23 @@ function createTray() {
         click: () => {
           if (petShown) hidePet(); else showPet();
         },
+      },
+      {
+        label: 'Switch Pet',
+        submenu: [
+          {
+            label: 'OpenClaw 🦞',
+            type: 'radio',
+            checked: currentPet === 'lobster',
+            click: () => setSetting('petKind', 'lobster'),
+          },
+          {
+            label: 'Claude Code ✦',
+            type: 'radio',
+            checked: currentPet === 'claude',
+            click: () => setSetting('petKind', 'claude'),
+          },
+        ],
       },
       { type: 'separator' },
       {

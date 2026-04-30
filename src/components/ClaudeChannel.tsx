@@ -25,10 +25,24 @@ const BUILTIN_DESCRIPTIONS: Record<string, string> = {
   '/heapdump':        'Capture a V8 heap dump',
 };
 
+// Anthropic's Claude Code mark — orange 12-rayed sunburst.
 function ClaudeMark({ size = 16 }: { size?: number }) {
+  // 12 rays, 30° apart, tapered. Rendered via rotated rectangles around (50,50).
+  const rays = Array.from({ length: 12 }, (_, i) => i * 30);
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="#cc785c" aria-hidden="true">
-      <path d="M12 2 L13.2 9 L19.5 5.5 L16 11.8 L23 12 L16 12.2 L19.5 18.5 L13.2 15 L12 22 L10.8 15 L4.5 18.5 L8 12.2 L1 12 L8 11.8 L4.5 5.5 L10.8 9 Z" />
+    <svg width={size} height={size} viewBox="0 0 100 100" fill="#cc785c" aria-hidden="true">
+      {rays.map((deg) => (
+        <path
+          key={deg}
+          // A pointed petal: wide at the center, tapered at the tip.
+          // Coordinates are in the "vertical, pointing up from center" frame
+          // and rotated into place around (50,50).
+          d="M 47 50 L 49 8 L 51 8 L 53 50 Z"
+          transform={`rotate(${deg} 50 50)`}
+        />
+      ))}
+      {/* Filled center disc to anchor the rays */}
+      <circle cx="50" cy="50" r="6" />
     </svg>
   );
 }

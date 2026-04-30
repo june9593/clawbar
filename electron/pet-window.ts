@@ -137,6 +137,7 @@ export function createPetWindow(
 
   ipcMain.on('pet:right-click', () => {
     if (!petWindow || !createArgs) return;
+    const currentPet = (getSettings() as { petKind?: 'lobster' | 'claude' }).petKind ?? 'lobster';
     const contextMenu = Menu.buildFromTemplate([
       {
         label: 'Show Chat',
@@ -151,6 +152,23 @@ export function createPetWindow(
         },
       },
       { type: 'separator' },
+      {
+        label: 'Switch Pet',
+        submenu: [
+          {
+            label: 'OpenClaw 🦞',
+            type: 'radio',
+            checked: currentPet === 'lobster',
+            click: () => setSetting('petKind', 'lobster'),
+          },
+          {
+            label: 'Claude Code ✦',
+            type: 'radio',
+            checked: currentPet === 'claude',
+            click: () => setSetting('petKind', 'claude'),
+          },
+        ],
+      },
       {
         label: 'Hide Pet',
         click: () => hidePet(),

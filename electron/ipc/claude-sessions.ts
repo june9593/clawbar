@@ -87,22 +87,45 @@ async function readFirstUserMessage(filePath: string): Promise<string> {
   });
 }
 
-/** Resolve the absolute path of `claude` on the user's PATH. Uses a
- *  login (non-interactive) shell so PATH set in `~/.zprofile` (where
- *  Homebrew, npm-global, and the native installer typically live) is
- *  honoured even when Electron is launched by Finder with a minimal
- *  PATH. We deliberately omit `-i` because Node's spawn has no TTY,
- *  and an interactive shell hangs forever waiting for one. */
+/** Common install locations for `claude` we probe before falling back to
+ *  shell-resolution. Order matters — earlier entries win when multiple
+ *  exist. Anthropic's native installer puts it in ~/.local/bin; Homebrew
+ *  Apple Silicon uses /opt/homebrew/bin; npm-global Intel and many
+ *  installers default to /usr/local/bin. */
+function commonClaudePaths(): string[] {
+  const home = os.homedir();
+  return [
+    path.join(home, '.local/bin/claude'),
+    '/opt/homebrew/bin/claude',
+    '/usr/local/bin/claude',
+    path.join(home, '.npm-global/bin/claude'),
+    path.join(home, '.bun/bin/claude'),
+    '/opt/local/bin/claude', // MacPorts
+  ];
+}
+
+/** Resolve the absolute path of `claude` on the user's PATH.
+ *  Strategy:
+ *    1. Probe well-known install locations directly (fast, no shell, works
+ *       in even the most-restrictive Electron env).
+ *    2. Fall back to a login (non-interactive) shell so PATH set in
+ *       `~/.zprofile` / `~/.bash_profile` is honoured even when Electron
+ *       is launched by Finder with a minimal PATH. We deliberately omit
+ *       `-i` because Node's spawn has no TTY and an interactive shell
+ *       hangs forever waiting for one. */
 function resolveCliPath(): Promise<string | null> {
+  // Step 1: probe the obvious paths. Fast and reliable.
+  for (const p of commonClaudePaths()) {
+    try {
+      const st = fs.statSync(p);
+      if (st.isFile() && (st.mode & 0o111)) return Promise.resolve(p);
+    } catch { /* not present, try next */ }
+  }
+  // Step 2: ask the user's login shell. Last-resort for non-standard
+  // installs (custom prefix in ~/.zprofile, asdf, mise, etc.).
   return new Promise((resolve) => {
-    // -lc (login + command, NOT interactive). `-i` interactive without
-    // a TTY hangs indefinitely under Node's spawn — Electron's spawn is
-    // non-TTY, so -i would never return. Login shell still sources
-    // ~/.zprofile (where Homebrew / npm-global / native installers
-    // typically extend PATH), which is enough to find `claude`. PATH
-    // set only in `~/.zshrc` interactive rc would be missed, but that
-    // is rare for tools meant to be available outside interactive use.
-    const proc = spawn(process.env.SHELL || '/bin/zsh', ['-lc', 'command -v claude'], { shell: false });
+    const shell = process.env.SHELL || '/bin/zsh';
+    const proc = spawn(shell, ['-lc', 'command -v claude'], { shell: false });
     let out = '';
     let settled = false;
     const settle = (val: string | null) => {

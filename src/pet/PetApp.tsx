@@ -1,16 +1,33 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import LobsterPet from './LobsterPet';
+import ClaudePet from './ClaudePet';
 import './pet.css';
 
 type PetState = 'idle' | 'hover' | 'active' | 'notification' | 'disconnected';
 type ConnectionStatus = 'connected' | 'disconnected' | 'connecting';
+type PetKind = 'lobster' | 'claude';
 
 const PetApp: React.FC = () => {
   const [petState, setPetState] = useState<PetState>('idle');
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('disconnected');
+  const [petKind, setPetKind] = useState<PetKind>('lobster');
   const activeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isDraggingRef = useRef(false);
   const dragStartRef = useRef({ mouseX: 0, mouseY: 0 });
+
+  // Load petKind from settings on mount; re-poll every 2s so a tray-menu
+  // change is reflected without needing a full reload event channel.
+  useEffect(() => {
+    let cancelled = false;
+    const loadKind = async () => {
+      const s = await window.electronAPI.settings.get();
+      const k = (s as { petKind?: string }).petKind;
+      if (!cancelled && (k === 'lobster' || k === 'claude')) setPetKind(k);
+    };
+    loadKind();
+    const t = setInterval(loadKind, 2000);
+    return () => { cancelled = true; clearInterval(t); };
+  }, []);
 
   // Listen for ws:status from main process
   useEffect(() => {
@@ -114,7 +131,7 @@ const PetApp: React.FC = () => {
       onMouseDown={handleMouseDown}
     >
       <div className="lobster-svg">
-        <LobsterPet />
+        {petKind === 'claude' ? <ClaudePet /> : <LobsterPet />}
       </div>
       <div className="pet-shadow" />
       <div className={`status-dot ${statusDotClass}`} />

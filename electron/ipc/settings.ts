@@ -24,6 +24,11 @@ interface AppSettings {
   channels: Channel[];
   activeChannelId: string;
   petVisible: boolean;
+  /** Which mascot the desktop pet shows. 'lobster' = OpenClaw lobster
+   *  (default, preserves existing behaviour); 'claude' = pixel-art
+   *  Claude Code critter. Set via tray / pet right-click "Switch Pet"
+   *  submenu; persisted across launches. */
+  petKind: 'lobster' | 'claude';
 }
 
 const defaultChannels: Channel[] = [
@@ -46,6 +51,7 @@ const defaults: AppSettings = {
   channels: defaultChannels,
   activeChannelId: 'openclaw',
   petVisible: true,
+  petKind: 'lobster',
 };
 
 function getConfigPath(): string {
@@ -94,7 +100,7 @@ export function setupSettingsIPC() {
     const allowedKeys = [
       'gatewayUrl', 'authMode', 'authToken', 'authPassword',
       'theme', 'chatMode', 'hideOnClickOutside', 'autoLaunch',
-      'channels', 'activeChannelId', 'petVisible',
+      'channels', 'activeChannelId', 'petVisible', 'petKind',
     ];
     if (!allowedKeys.includes(key)) return;
 
